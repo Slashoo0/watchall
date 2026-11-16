@@ -1,0 +1,4 @@
+# Réglages Netlify pour Watchall
+[build]
+  publish = "."                     # le site est à la racine (pas d'étape de construction)
+  functions = "netlify/functions"   # le dossier de la fonction serveur

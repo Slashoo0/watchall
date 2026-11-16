@@ -1,0 +1,2939 @@
+<!DOCTYPE html>
+<html lang="fr-CA" data-theme="sombre">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Watchall — tout ce que tu veux regarder</title>
+<!-- Polices : Instrument Serif (titres élégants) + Inter (texte). Si elles ne chargent pas, on retombe sur Georgia / la police du système. -->
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Instrument+Serif:ital@0;1&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+<!-- Configuration partagée par le propriétaire (services, liens, couleurs, images).
+     Remplie automatiquement par le bouton « Publier ma configuration ». -->
+<script type="application/json" id="config-partagee">null</script>
+<style id="style-app">
+/* =========================================================
+   1. VARIABLES DE THÈME
+   Toutes les couleurs passent par ces variables : changer de
+   thème = changer l'attribut data-theme sur <html>.
+   ========================================================= */
+:root {
+  --bg: #0b0b0c;
+  --surface: #131315;
+  --surface-2: #1a1a1d;
+  --ligne: #242428;
+  --ligne-forte: #34343a;
+  --texte: #ececed;
+  --muet: #8a8a91;
+  --pale: #56565d;
+  --avert: #d6a35a;
+  --rayon: 16px;
+  --serif: "Instrument Serif", Georgia, "Times New Roman", serif;
+  --sans: "Inter", system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+  --mono: ui-monospace, "SF Mono", Menlo, Consolas, monospace;
+  --ease: cubic-bezier(.2, .7, .2, 1);
+  color-scheme: dark;
+}
+[data-theme="clair"] {
+  --bg: #f5f4f0;
+  --surface: #ffffff;
+  --surface-2: #eeede8;
+  --ligne: #e3e1db;
+  --ligne-forte: #cfccc4;
+  --texte: #17171a;
+  --muet: #6a6a70;
+  --pale: #a2a2a8;
+  --avert: #9a6212;
+  color-scheme: light;
+}
+
+/* =========================================================
+   2. BASE
+   ========================================================= */
+* { box-sizing: border-box; }
+/* Un élément marqué « hidden » reste caché, même si son style dit le contraire */
+[hidden] { display: none !important; }
+html, body { margin: 0; }
+body {
+  background: var(--bg);
+  color: var(--texte);
+  font-family: var(--sans);
+  font-size: 15px;
+  line-height: 1.5;
+  -webkit-font-smoothing: antialiased;
+  transition: background .4s var(--ease), color .4s var(--ease);
+}
+a { color: inherit; text-decoration: none; }
+button, input, select, textarea { font: inherit; color: inherit; }
+button { cursor: pointer; background: none; border: 0; padding: 0; }
+button:disabled { cursor: default; opacity: .4; }
+:focus-visible { outline: 2px solid var(--texte); outline-offset: 3px; border-radius: 6px; }
+kbd {
+  font-family: var(--mono); font-size: 11px;
+  padding: 2px 6px; border: 1px solid var(--ligne-forte);
+  border-radius: 6px; color: var(--muet); background: var(--surface);
+}
+.muet { color: var(--muet); }
+
+/* =========================================================
+   3. EN-TÊTE ET NAVIGATION
+   ========================================================= */
+.entete {
+  max-width: 1120px; margin: 0 auto;
+  padding: 28px 32px 0;
+  display: flex; align-items: center; gap: 32px;
+}
+.marque { font-family: var(--serif); font-size: 26px; letter-spacing: .01em; white-space: nowrap; }
+.marque em { color: var(--muet); }
+.nav { display: flex; gap: 4px; overflow-x: auto; scrollbar-width: none; flex: 1; }
+.nav::-webkit-scrollbar { display: none; }
+.nav a {
+  padding: 8px 14px; border-radius: 999px; color: var(--muet);
+  white-space: nowrap; transition: color .25s, background .25s;
+}
+.nav a:hover { color: var(--texte); }
+.nav a.actif { color: var(--texte); background: var(--surface-2); }
+.btn-recherche {
+  display: flex; align-items: center; gap: 10px;
+  color: var(--muet); padding: 8px 12px; border-radius: 999px;
+  border: 1px solid var(--ligne); transition: border-color .25s, color .25s;
+  white-space: nowrap;
+}
+.btn-recherche:hover { color: var(--texte); border-color: var(--ligne-forte); }
+
+/* =========================================================
+   4. VUES (une seule visible à la fois)
+   ========================================================= */
+main { max-width: 1120px; margin: 0 auto; padding: 0 32px 96px; }
+.vue { display: none; animation: apparait .5s var(--ease); }
+.vue.visible { display: block; }
+@keyframes apparait { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: none; } }
+
+.sur-titre { color: var(--muet); margin: 88px 0 8px; text-transform: lowercase; letter-spacing: .02em; }
+.salut {
+  font-family: var(--serif); font-weight: 400;
+  font-size: clamp(48px, 8vw, 96px); line-height: 1; letter-spacing: -.01em;
+  margin: 0 0 64px;
+}
+.salut em { color: var(--muet); }
+.entete-vue { margin: 72px 0 40px; }
+.entete-vue h1 {
+  font-family: var(--serif); font-weight: 400;
+  font-size: clamp(44px, 6vw, 72px); line-height: 1; margin: 0 0 8px;
+}
+h2.titre-section { font-family: var(--serif); font-weight: 400; font-size: 28px; margin: 0 0 16px; }
+
+/* =========================================================
+   5. TUILES DE L'ACCUEIL
+   ========================================================= */
+.grille-tuiles {
+  display: grid; gap: 16px;
+  grid-template-columns: repeat(auto-fill, minmax(230px, 1fr));
+}
+.tuile {
+  position: relative; display: flex; flex-direction: column; justify-content: space-between;
+  min-height: 176px; padding: 26px 26px 22px;
+  background: var(--surface); border: 1px solid var(--ligne); border-radius: var(--rayon);
+  transition: transform .45s var(--ease), border-color .3s, background .3s;
+}
+.tuile:hover { transform: translateY(-3px); border-color: var(--ligne-forte); }
+.tuile:active { transform: translateY(-1px) scale(.995); }
+.tuile-nom { font-family: var(--serif); font-size: clamp(30px, 3.2vw, 40px); line-height: 1.05; overflow-wrap: anywhere; }
+/* Image importée par l'utilisateur : centrée, taille sobre */
+.tuile-logo { flex: 1; display: flex; align-items: center; justify-content: center; padding: 4px 0 16px; }
+.tuile-logo img {
+  max-width: 62%; max-height: 54px; object-fit: contain;
+  transition: transform .5s var(--ease);
+}
+.tuile:hover .tuile-logo img { transform: scale(1.04); }
+/* Tuile avec image : l'image prend toute la case (comme un fond) */
+.tuile.avec-image { padding: 0; overflow: hidden; }
+.tuile-fond { position: absolute; inset: 0; background: var(--surface-2); }
+.tuile-fond { overflow: hidden; }
+/* --z = zoom, --x / --y = position (réglés avec l'outil « Recadrer ») */
+.tuile-fond img {
+  width: 100%; height: 100%; display: block;
+  object-fit: cover;
+  object-position: var(--x, 50%) var(--y, 50%);
+  transform-origin: var(--x, 50%) var(--y, 50%);
+  transform: scale(var(--z, 1));
+  transition: transform .8s var(--ease);
+}
+.tuile.avec-image:hover .tuile-fond img { transform: scale(calc(var(--z, 1) * 1.05)); }
+/* Option « Image entière » : on voit toute l'image, sans la couper */
+.tuile.entiere .tuile-fond img { object-fit: contain; padding: 16px 20px 50px; }
+/* Le fond de la tuile prend la couleur du bord du logo : la case paraît pleine */
+.tuile-fond { transition: background .4s var(--ease); }
+/* Bas de la tuile lisible par-dessus l'image grâce à un léger dégradé */
+.tuile.avec-image .tuile-pied {
+  position: relative; margin-top: auto;
+  padding: 44px 22px 18px;
+  background: linear-gradient(to bottom, transparent, rgba(0,0,0,.75));
+}
+.tuile.avec-image .tuile-meta { color: rgba(255,255,255,.82); }
+.tuile.avec-image .tuile-meta.vieux { color: #f0c27a; }
+.tuile-pied { display: flex; flex-direction: column; gap: 12px; }
+/* La seule touche de couleur : une fine ligne qui s'allonge au survol */
+.trait {
+  display: block; height: 2px; width: 28px; border-radius: 2px;
+  background: var(--c); transition: width .6s var(--ease);
+}
+.tuile:hover .trait, .tuile:focus-visible .trait { width: 100%; }
+.tuile-meta { font-size: 13px; color: var(--muet); }
+.tuile-meta.vieux { color: var(--avert); }
+
+.rangee-actions { display: flex; flex-wrap: wrap; align-items: center; gap: 20px; margin-top: 48px; }
+.bouton-hasard {
+  font-family: var(--serif); font-size: 26px; font-style: italic;
+  display: inline-flex; align-items: center; gap: 14px;
+  padding: 14px 26px; border-radius: 999px; border: 1px solid var(--ligne-forte);
+  transition: background .3s, border-color .3s;
+}
+.bouton-hasard span { transition: transform .4s var(--ease); font-style: normal; }
+.bouton-hasard:hover { background: var(--surface-2); }
+.bouton-hasard:hover span { transform: translateX(4px); }
+.lien-discret { color: var(--muet); font-size: 14px; transition: color .25s; }
+.lien-discret:hover { color: var(--texte); }
+
+.section-en-cours { margin-top: 80px; }
+.section-en-cours h2 { font-size: 13px; font-weight: 500; color: var(--muet); text-transform: uppercase; letter-spacing: .08em; margin: 0 0 12px; }
+
+.vide {
+  padding: 40px; border: 1px dashed var(--ligne-forte); border-radius: var(--rayon);
+  color: var(--muet); text-align: center; list-style: none;
+}
+.vide a, .vide button { color: var(--texte); text-decoration: underline; text-underline-offset: 3px; }
+
+/* =========================================================
+   6. MA LISTE
+   ========================================================= */
+.form-ajout {
+  display: grid; gap: 10px;
+  grid-template-columns: 1.3fr 1fr 1.1fr .9fr 1fr auto;
+  padding: 10px; background: var(--surface); border: 1px solid var(--ligne); border-radius: var(--rayon);
+}
+.form-ajout .champ-titre { grid-column: 1 / -1; }
+.champ {
+  width: 100%; padding: 12px 14px; border-radius: 10px;
+  background: var(--surface-2); border: 1px solid transparent;
+  transition: border-color .25s;
+}
+.champ:focus { outline: none; border-color: var(--ligne-forte); }
+.champ::placeholder { color: var(--pale); }
+.bouton-plein {
+  display: inline-flex; align-items: center; justify-content: center; gap: 8px;
+  padding: 12px 20px; border-radius: 10px; font-weight: 500;
+  background: var(--texte); color: var(--bg); transition: opacity .25s, transform .25s var(--ease);
+  white-space: nowrap;
+}
+.bouton-plein:hover { opacity: .88; }
+.bouton-plein:active { transform: scale(.98); }
+.bouton-contour {
+  display: inline-flex; align-items: center; gap: 8px;
+  padding: 10px 16px; border-radius: 10px; border: 1px solid var(--ligne-forte);
+  transition: background .25s, opacity .25s;
+}
+.bouton-contour:hover { background: var(--surface-2); }
+.bouton-contour.danger { color: var(--avert); }
+.bouton-petit { padding: 8px 13px; font-size: 14px; }
+
+.filtres { display: flex; gap: 6px; margin: 32px 0 0; flex-wrap: wrap; }
+.filtres button {
+  padding: 7px 14px; border-radius: 999px; color: var(--muet);
+  border: 1px solid transparent; transition: all .25s;
+}
+.filtres button:hover { color: var(--texte); }
+.filtres button.actif { color: var(--texte); border-color: var(--ligne-forte); }
+.filtres button small { color: var(--pale); margin-left: 4px; }
+
+/* Recherche + filtres secondaires de la liste */
+.outils-liste { display: flex; flex-wrap: wrap; gap: 8px; margin: 14px 0 8px; }
+.champ-petit {
+  padding: 8px 14px; border-radius: 999px; font-size: 14px;
+  background: var(--surface); border: 1px solid var(--ligne); color: var(--texte);
+  transition: border-color .25s;
+}
+.champ-petit:focus { outline: none; border-color: var(--ligne-forte); }
+.champ-petit.recherche { flex: 1 1 220px; min-width: 0; }
+.champ-petit.actif { border-color: var(--texte); }
+
+.items { list-style: none; margin: 0; padding: 0; }
+.item {
+  display: flex; align-items: center; gap: 16px;
+  padding: 18px 4px; border-bottom: 1px solid var(--ligne);
+  animation: apparait .4s var(--ease);
+}
+.point { width: 8px; height: 8px; border-radius: 50%; background: var(--c, var(--pale)); flex: none; display: inline-block; }
+.item-texte { flex: 1; min-width: 0; display: flex; flex-direction: column; }
+.item-titre { font-family: var(--serif); font-size: 24px; line-height: 1.15; overflow-wrap: anywhere; }
+.item.fini .item-titre { color: var(--muet); }
+.item-meta { font-size: 13px; color: var(--muet); }
+.statut {
+  font-size: 12px; padding: 5px 11px; border-radius: 999px;
+  border: 1px solid var(--ligne-forte); color: var(--muet); white-space: nowrap;
+  transition: all .25s;
+}
+.statut:hover { color: var(--texte); }
+.statut.en-cours { color: var(--texte); border-color: var(--texte); }
+.icone {
+  width: 34px; height: 34px; display: inline-flex; align-items: center; justify-content: center;
+  border-radius: 50%; color: var(--muet); transition: background .25s, color .25s; flex: none;
+}
+.icone:hover { background: var(--surface-2); color: var(--texte); }
+
+/* Étoiles de note (1 à 5) */
+.etoiles { display: inline-flex; gap: 1px; margin-top: 4px; }
+.etoiles button { font-size: 16px; line-height: 1; padding: 2px; color: var(--pale); transition: color .2s, transform .2s var(--ease); }
+.etoiles button:hover { transform: scale(1.15); }
+.etoiles button.pleine { color: var(--texte); }
+
+/* =========================================================
+   7. ABONNEMENTS
+   ========================================================= */
+.totaux { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin-bottom: 48px; }
+.total { padding: 28px; background: var(--surface); border: 1px solid var(--ligne); border-radius: var(--rayon); }
+.etiquette { display: block; font-size: 13px; color: var(--muet); margin-bottom: 6px; }
+.montant { font-family: var(--serif); font-size: clamp(40px, 6vw, 64px); line-height: 1; }
+.abo { display: flex; gap: 16px; align-items: flex-start; padding: 22px 4px; border-bottom: 1px solid var(--ligne); }
+.abo .point { margin-top: 12px; }
+.abo-corps { flex: 1; min-width: 0; }
+.abo-ligne { display: flex; justify-content: space-between; align-items: baseline; gap: 16px; flex-wrap: wrap; }
+.abo-nom { font-family: var(--serif); font-size: 28px; line-height: 1.1; }
+.abo-prix { font-variant-numeric: tabular-nums; }
+.abo-details { font-size: 13px; color: var(--muet); margin-top: 4px; }
+.avert-doux { margin-top: 10px; font-size: 13px; color: var(--avert); display: flex; gap: 8px; align-items: baseline; }
+.note { color: var(--muet); font-size: 13px; margin-top: 24px; }
+
+/* =========================================================
+   8. PARAMÈTRES
+   ========================================================= */
+.bloc { padding: 32px 0; border-top: 1px solid var(--ligne); }
+.bloc:first-of-type { border-top: 0; padding-top: 0; }
+.bloc p { margin: 0 0 16px; max-width: 640px; }
+/* Bloc « Avancé » repliable (clé TMDB) */
+.bloc-avance summary { cursor: pointer; list-style: none; display: flex; align-items: center; gap: 10px; }
+.bloc-avance summary::-webkit-details-marker { display: none; }
+.bloc-avance summary::after { content: "+"; margin-left: auto; font-size: 24px; color: var(--pale); transition: transform .2s; }
+.bloc-avance[open] summary::after { transform: rotate(45deg); }
+.bloc-avance summary .titre-section { margin: 0; }
+.bloc-avance[open] summary { margin-bottom: 16px; }
+.note-serveur { color: var(--texte); font-size: 14px; margin: 0 0 12px; }
+.segment { display: inline-flex; padding: 4px; border-radius: 999px; background: var(--surface-2); }
+.segment button { padding: 8px 18px; border-radius: 999px; color: var(--muet); transition: all .25s; }
+.segment button.actif { background: var(--surface); color: var(--texte); box-shadow: 0 1px 2px rgba(0,0,0,.2); }
+
+.ligne-service { padding: 16px; margin-bottom: 10px; background: var(--surface); border: 1px solid var(--ligne); border-radius: var(--rayon); }
+.ls-tete { display: flex; align-items: center; gap: 12px; }
+.ls-num { font-family: var(--mono); font-size: 12px; color: var(--pale); width: 14px; }
+input[type="color"] {
+  width: 30px; height: 30px; padding: 0; border: 1px solid var(--ligne-forte);
+  border-radius: 50%; background: none; cursor: pointer; flex: none; overflow: hidden;
+}
+input[type="color"]::-webkit-color-swatch-wrapper { padding: 0; }
+input[type="color"]::-webkit-color-swatch { border: 0; border-radius: 50%; }
+input[type="color"]::-moz-color-swatch { border: 0; border-radius: 50%; }
+.ls-nom {
+  flex: 1; min-width: 0; font-family: var(--serif); font-size: 24px;
+  background: transparent; border: 0; border-bottom: 1px solid transparent; padding: 2px 0;
+}
+.ls-nom:focus { outline: none; border-bottom-color: var(--ligne-forte); }
+.ls-boutons { display: flex; gap: 2px; }
+/* Téléphone : le nom prend toute la largeur, les boutons passent dessous à droite */
+@media (max-width: 480px) {
+  .ls-tete { flex-wrap: wrap; }
+  .ls-nom { flex: 1 1 0; min-width: 0; }
+  .ls-boutons { width: 100%; justify-content: flex-end; }
+}
+.ls-champs { display: grid; grid-template-columns: 2fr 1fr 1fr; gap: 10px; margin-top: 12px; }
+.ls-champs label { display: flex; flex-direction: column; gap: 6px; font-size: 12px; color: var(--muet); }
+.ls-image { display: flex; align-items: center; gap: 12px; margin-top: 12px; flex-wrap: wrap; }
+.apercu-image {
+  width: 72px; height: 44px; border-radius: 10px; background: var(--surface-2);
+  display: flex; align-items: center; justify-content: center; font-size: 11px; color: var(--pale); flex: none;
+}
+.apercu-image img { max-width: 80%; max-height: 80%; object-fit: contain; }
+/* Outil de recadrage dans Paramètres */
+.recadrage {
+  display: grid; grid-template-columns: 240px 1fr; gap: 20px; align-items: center;
+  margin-top: 14px; padding: 16px; border-radius: 14px; background: var(--surface-2);
+  animation: apparait .35s var(--ease);
+}
+.recadrage .tuile { min-height: 0; aspect-ratio: 4 / 3; pointer-events: none; }
+.recadrage .tuile:hover { transform: none; }
+.reglages { display: flex; flex-direction: column; gap: 14px; }
+.reglages label { display: grid; grid-template-columns: 118px 1fr 46px; align-items: center; gap: 12px; font-size: 13px; color: var(--muet); }
+.reglages output { font-variant-numeric: tabular-nums; text-align: right; color: var(--texte); }
+input[type="range"] { width: 100%; accent-color: var(--texte); cursor: pointer; }
+.segment-petit button { padding: 6px 12px; font-size: 13px; }
+.statut-partage { font-size: 13px; color: var(--muet); margin-top: 10px; }
+.btn-retirer { font-size: 13px; color: var(--muet); padding: 6px 10px; border-radius: 8px; }
+.btn-retirer:hover { color: var(--avert); background: var(--surface-2); }
+.btn-retirer.confirmer { color: var(--avert); }
+
+textarea.champ { min-height: 140px; font-family: var(--mono); font-size: 12px; resize: vertical; }
+.rangee { display: flex; flex-wrap: wrap; gap: 10px; align-items: center; margin-top: 12px; }
+.badge { font-family: var(--sans); font-size: 11px; color: var(--muet); border: 1px solid var(--ligne-forte); padding: 2px 8px; border-radius: 999px; vertical-align: middle; margin-left: 8px; }
+
+/* =========================================================
+   9. VOILES : PALETTE (Ctrl+K) ET FENÊTRE MODALE
+   ========================================================= */
+.voile {
+  position: fixed; inset: 0; z-index: 50;
+  background: rgba(0,0,0,.5); backdrop-filter: blur(6px); -webkit-backdrop-filter: blur(6px);
+  display: flex; justify-content: center; align-items: flex-start;
+  padding: 8vh 16px 16px;
+  opacity: 0; visibility: hidden; pointer-events: none;
+  transition: opacity .3s var(--ease), visibility 0s linear .3s;
+}
+.voile.ouvert { opacity: 1; visibility: visible; pointer-events: auto; transition: opacity .3s var(--ease); }
+.palette, .modale {
+  width: min(640px, 100%);
+  background: var(--surface); border: 1px solid var(--ligne-forte); border-radius: 20px;
+  box-shadow: 0 30px 80px rgba(0,0,0,.4);
+  transform: translateY(-8px) scale(.98); transition: transform .35s var(--ease);
+  overflow: hidden;
+}
+.voile.ouvert .palette, .voile.ouvert .modale { transform: none; }
+.palette input { width: 100%; padding: 22px 24px; border: 0; background: transparent; font-size: 18px; border-bottom: 1px solid var(--ligne); }
+.palette input:focus { outline: none; }
+.palette ul { list-style: none; margin: 0; padding: 8px; max-height: 50vh; overflow-y: auto; }
+.palette li { display: flex; align-items: center; gap: 14px; padding: 12px 14px; border-radius: 12px; cursor: pointer; transition: background .15s; }
+.palette li.choisi { background: var(--surface-2); }
+.palette li .p-libelle { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.palette li .p-detail { font-size: 12px; color: var(--muet); white-space: nowrap; }
+.palette li .p-sans-point { width: 8px; flex: none; }
+.palette .p-vide { color: var(--muet); padding: 18px 14px; cursor: default; }
+.palette-pied { display: flex; gap: 18px; padding: 12px 20px; border-top: 1px solid var(--ligne); font-size: 12px; color: var(--muet); flex-wrap: wrap; }
+.palette-pied kbd { margin-right: 4px; }
+
+.modale { position: relative; padding: 36px; max-height: 88vh; overflow-y: auto; }
+.modale.large { width: min(780px, 100%); }
+.fermer {
+  position: absolute; top: 16px; right: 16px; width: 36px; height: 36px; border-radius: 50%;
+  color: var(--muet); font-size: 22px; line-height: 1; transition: background .25s;
+}
+.fermer:hover { background: var(--surface-2); color: var(--texte); }
+.modale h2 { font-family: var(--serif); font-weight: 400; font-size: 40px; line-height: 1.05; margin: 0 0 6px; }
+.choix-temps { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; margin: 24px 0 8px; }
+.choix-temps button { padding: 16px 12px; border-radius: 14px; border: 1px solid var(--ligne-forte); transition: all .25s; }
+.choix-temps button:hover { background: var(--surface-2); }
+.choix-temps button.actif { background: var(--texte); color: var(--bg); border-color: var(--texte); }
+.resultat { margin-top: 24px; min-height: 20px; }
+.resultat-carte { padding: 24px; border-radius: 16px; background: var(--surface-2); animation: apparait .45s var(--ease); }
+.resultat-titre { font-family: var(--serif); font-size: 34px; line-height: 1.1; margin: 10px 0 6px; overflow-wrap: anywhere; }
+
+/* Filtres en pastilles (mode Découvrir) */
+.chips-groupe { margin-top: 18px; }
+.chips-label { font-size: 11px; color: var(--muet); text-transform: uppercase; letter-spacing: .09em; margin-bottom: 8px; }
+.chips { display: flex; flex-wrap: wrap; gap: 6px; }
+.chip {
+  display: inline-flex; align-items: center; gap: 8px;
+  padding: 7px 14px; border-radius: 999px; font-size: 14px;
+  border: 1px solid var(--ligne-forte); color: var(--muet);
+  transition: background .25s, color .25s, border-color .25s;
+}
+.chip:hover { color: var(--texte); }
+.chip.actif { background: var(--texte); color: var(--bg); border-color: var(--texte); }
+.zone-envie { margin-top: 20px; }
+
+/* Cartes de suggestions */
+.carte-suggestion {
+  padding: 22px 24px; border-radius: 16px; background: var(--surface-2); margin-top: 12px;
+  animation: apparait .45s var(--ease) both;
+  transition: opacity .35s var(--ease), transform .35s var(--ease);
+}
+.carte-suggestion:nth-child(2) { animation-delay: .07s; }
+.carte-suggestion:nth-child(3) { animation-delay: .14s; }
+.carte-suggestion.part { opacity: 0; transform: translateX(16px); }
+.carte-suggestion.vue-deja { opacity: .65; }
+.cs-plateforme { display: flex; align-items: center; gap: 8px; font-size: 13px; color: var(--muet); }
+.cs-titre { font-family: var(--serif); font-size: 30px; line-height: 1.1; margin: 8px 0 4px; overflow-wrap: anywhere; }
+.cs-meta { font-size: 13px; color: var(--muet); }
+.cs-pourquoi { margin: 12px 0 0; font-style: italic; color: var(--texte); opacity: .85; }
+.cs-actions { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 16px; align-items: center; }
+
+/* Carte avec affiche (TMDB) */
+.cs-corps { display: flex; gap: 18px; align-items: flex-start; }
+.cs-affiche { width: 78px; flex: none; border-radius: 10px; aspect-ratio: 2 / 3; object-fit: cover; background: var(--surface); }
+.cs-texte { flex: 1; min-width: 0; }
+.cs-resume {
+  margin: 10px 0 0; font-size: 14px; color: var(--muet);
+  /* 4 lignes maximum, puis « … » */
+  display: -webkit-box; -webkit-line-clamp: 4; line-clamp: 4; -webkit-box-orient: vertical; overflow: hidden;
+}
+.source-donnees { font-size: 12px; color: var(--pale); margin-top: 14px; }
+.source-donnees a, .credits a { color: inherit; text-decoration: underline; text-underline-offset: 2px; }
+/* Crédits en bas de page : discrets mais visibles */
+.credits { max-width: 1120px; margin: 0 auto; padding: 0 32px 40px; font-size: 12px; color: var(--pale); }
+@media (max-width: 760px) { .credits { padding: 0 20px 32px; } .cs-affiche { width: 64px; } }
+
+/* Chargement : trois points qui respirent */
+.chargement { display: flex; align-items: center; gap: 14px; color: var(--muet); padding: 28px 0 8px; flex-wrap: wrap; }
+.points { display: inline-flex; gap: 5px; }
+.points span { width: 6px; height: 6px; border-radius: 50%; background: var(--muet); animation: respire 1.2s infinite var(--ease); }
+.points span:nth-child(2) { animation-delay: .15s; }
+.points span:nth-child(3) { animation-delay: .3s; }
+@keyframes respire { 0%, 100% { opacity: .25; transform: scale(.8); } 50% { opacity: 1; transform: scale(1); } }
+.message-doux { margin-top: 20px; padding: 18px 20px; border-radius: 14px; border: 1px dashed var(--ligne-forte); color: var(--muet); }
+
+/* Aide raccourcis */
+.raccourcis { list-style: none; padding: 0; margin: 20px 0 0; }
+.raccourcis li { display: flex; justify-content: space-between; gap: 16px; padding: 12px 0; border-bottom: 1px solid var(--ligne); }
+.raccourcis li span:last-child { white-space: nowrap; }
+
+/* Carte « Bon retour » : apparaît en bas quand on revient d'un service */
+.retour {
+  position: fixed; left: 50%; bottom: 24px; z-index: 55;
+  width: min(520px, calc(100% - 32px));
+  background: var(--surface); border: 1px solid var(--ligne-forte); border-radius: 20px;
+  box-shadow: 0 24px 60px rgba(0,0,0,.45);
+  padding: 22px 24px;
+  transform: translate(-50%, 24px); opacity: 0; pointer-events: none;
+  transition: transform .45s var(--ease), opacity .35s var(--ease);
+  max-height: 70vh; overflow-y: auto;
+}
+.retour.visible { transform: translate(-50%, 0); opacity: 1; pointer-events: auto; }
+.retour h3 { font-family: var(--serif); font-weight: 400; font-size: 30px; line-height: 1.1; margin: 0 32px 4px 0; display: flex; align-items: center; gap: 12px; }
+.retour .fermer { top: 12px; right: 12px; }
+.retour-choix { list-style: none; margin: 14px 0 0; padding: 0; }
+.retour-choix button {
+  width: 100%; text-align: left; display: flex; align-items: center; gap: 12px;
+  padding: 12px 14px; border-radius: 12px; transition: background .2s;
+}
+.retour-choix button:hover { background: var(--surface-2); }
+.retour-choix .r-titre { flex: 1; font-family: var(--serif); font-size: 20px; }
+.retour-choix .r-meta { font-size: 12px; color: var(--muet); }
+
+/* Petit message en bas de l'écran */
+.toast {
+  position: fixed; left: 50%; bottom: 28px; z-index: 60;
+  transform: translate(-50%, 16px); opacity: 0; pointer-events: none;
+  background: var(--texte); color: var(--bg); padding: 10px 18px; border-radius: 999px; font-size: 14px;
+  transition: all .35s var(--ease); max-width: calc(100% - 32px); text-align: center;
+}
+.toast.visible { transform: translate(-50%, 0); opacity: 1; }
+/* Quand la carte « Bon retour » est ouverte, le message passe en haut pour ne pas la cacher */
+.avec-retour .toast { bottom: auto; top: 24px; transform: translate(-50%, -16px); }
+.avec-retour .toast.visible { transform: translate(-50%, 0); }
+.bandeau { max-width: 1120px; margin: 16px auto 0; padding: 0 32px; font-size: 13px; color: var(--avert); }
+
+/* =========================================================
+   10. RESPONSIVE (téléphone)
+   ========================================================= */
+@media (max-width: 760px) {
+  .entete { padding: 20px 20px 0; gap: 12px; flex-wrap: wrap; }
+  .nav { order: 3; flex-basis: 100%; margin: 0 -6px; }
+  .btn-recherche { margin-left: auto; }
+  .btn-recherche kbd { display: none; }
+  main { padding: 0 20px 80px; }
+  .bandeau { padding: 0 20px; }
+  .sur-titre { margin-top: 48px; }
+  .salut { margin-bottom: 40px; }
+  .entete-vue { margin: 48px 0 28px; }
+  .grille-tuiles { grid-template-columns: 1fr 1fr; gap: 10px; }
+  .tuile { min-height: 132px; padding: 18px; }
+  .tuile-nom { font-size: 26px; }
+  .tuile-logo img { max-height: 40px; max-width: 75%; }
+  .tuile.avec-image .tuile-pied { padding: 36px 16px 14px; }
+  .form-ajout { grid-template-columns: 1fr 1fr; }
+  .form-ajout .bouton-plein { grid-column: 1 / -1; }
+  .totaux { grid-template-columns: 1fr; }
+  .ls-champs { grid-template-columns: 1fr 1fr; }
+  .ls-champs label:first-child { grid-column: 1 / -1; }
+  .recadrage { grid-template-columns: 1fr; }
+  .reglages label { grid-template-columns: 76px 1fr 42px; }
+  .modale { padding: 28px 20px; }
+  .modale h2 { font-size: 32px; padding-right: 32px; }
+  .choix-temps { grid-template-columns: 1fr; }
+  .item { gap: 10px; flex-wrap: wrap; }
+  .item-texte { flex-basis: calc(100% - 40px); }
+  .item-titre { font-size: 20px; }
+  .cs-titre { font-size: 26px; }
+  .lien-raccourci { display: none; }
+  .voile { padding-top: 4vh; }
+}
+@media (hover: none) { .lien-raccourci { display: none; } }
+
+/* Respecte le réglage « réduire les animations » du système */
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after { animation: none !important; transition: none !important; }
+}
+</style>
+</head>
+<body>
+
+<!-- ===================== EN-TÊTE ===================== -->
+<header class="entete">
+  <a class="marque" href="#accueil">Watchall<em>.</em></a>
+  <nav class="nav" aria-label="Navigation principale">
+    <a href="#accueil" data-vue="accueil">Accueil</a>
+    <a href="#liste" data-vue="liste">Ma liste</a>
+    <a href="#abonnements" data-vue="abonnements">Abonnements</a>
+    <a href="#parametres" data-vue="parametres">Paramètres</a>
+  </nav>
+  <button class="btn-recherche" data-action="palette" aria-label="Recherche rapide">
+    Rechercher <kbd>Ctrl K</kbd>
+  </button>
+</header>
+<p class="bandeau" id="bandeau-stockage" hidden>
+  Attention : ici, rien n'est sauvegardé (images, liste, prix). Tu regardes probablement un aperçu. Ouvre ton tableau de bord dans l'artifact « Watchall » pour garder tes données.
+</p>
+
+<main>
+  <!-- ===================== ACCUEIL ===================== -->
+  <section class="vue" id="vue-accueil">
+    <p class="sur-titre" id="date-du-jour"></p>
+    <h1 class="salut" id="salut"></h1>
+    <div class="grille-tuiles" id="tuiles"></div>
+    <div class="rangee-actions">
+      <button class="bouton-hasard" data-action="hasard">Je sais pas quoi regarder <span>→</span></button>
+      <button class="lien-discret lien-raccourci" data-action="aide">Raccourcis <kbd>?</kbd></button>
+    </div>
+    <div class="section-en-cours" id="en-cours-accueil"></div>
+  </section>
+
+  <!-- ===================== MA LISTE ===================== -->
+  <section class="vue" id="vue-liste">
+    <header class="entete-vue">
+      <h1>Ma liste</h1>
+      <p class="muet" id="compte-liste"></p>
+    </header>
+    <form class="form-ajout" id="form-ajout" autocomplete="off">
+      <input class="champ champ-titre" name="titre" placeholder="Titre du film ou de la série" maxlength="120" required aria-label="Titre">
+      <select class="champ" name="service" aria-label="Plateforme"></select>
+      <select class="champ" name="type" aria-label="Type">
+        <option value="">Type ?</option>
+        <option value="film">Film</option>
+        <option value="serie">Série</option>
+      </select>
+      <select class="champ" name="genre" aria-label="Genre"></select>
+      <input class="champ" name="duree" type="number" min="1" max="900" placeholder="Durée (min)" aria-label="Durée approximative en minutes (un épisode pour une série)">
+      <select class="champ" name="statut" aria-label="Statut">
+        <option value="a-voir">À voir</option>
+        <option value="en-cours">En cours</option>
+        <option value="fini">Déjà vu</option>
+      </select>
+      <button class="bouton-plein" type="submit">Ajouter</button>
+    </form>
+
+    <div class="filtres" id="filtres"></div>
+    <div class="outils-liste">
+      <input class="champ-petit recherche" id="recherche-liste" type="search" placeholder="Chercher dans ma liste…" aria-label="Chercher dans ma liste">
+      <select class="champ-petit" id="filtre-type" aria-label="Filtrer par type">
+        <option value="">Tous les types</option>
+        <option value="film">Films</option>
+        <option value="serie">Séries</option>
+      </select>
+      <select class="champ-petit" id="filtre-genre" aria-label="Filtrer par genre"></select>
+      <select class="champ-petit" id="filtre-duree" aria-label="Filtrer par durée">
+        <option value="">Toutes les durées</option>
+        <option value="court">30 min et moins</option>
+        <option value="moyen">31 à 75 min</option>
+        <option value="long">Plus de 75 min</option>
+      </select>
+      <select class="champ-petit" id="filtre-plateforme" aria-label="Filtrer par plateforme"></select>
+    </div>
+    <ul class="items" id="items-liste"></ul>
+  </section>
+
+  <!-- ===================== ABONNEMENTS ===================== -->
+  <section class="vue" id="vue-abonnements">
+    <header class="entete-vue"><h1>Abonnements</h1></header>
+    <div class="totaux">
+      <div class="total"><span class="etiquette">Par mois</span><span class="montant" id="total-mois"></span></div>
+      <div class="total"><span class="etiquette">Par année</span><span class="montant" id="total-annee"></span></div>
+    </div>
+    <ul class="items" id="liste-abos"></ul>
+    <p class="note" id="note-abos"></p>
+  </section>
+
+  <!-- ===================== PARAMÈTRES ===================== -->
+  <section class="vue" id="vue-parametres">
+    <header class="entete-vue"><h1>Paramètres</h1></header>
+
+    <div class="bloc">
+      <h2 class="titre-section">Apparence</h2>
+      <div class="segment" role="group" aria-label="Thème">
+        <button data-theme-choix="sombre">Sombre</button>
+        <button data-theme-choix="clair">Clair</button>
+      </div>
+    </div>
+
+    <div class="bloc">
+      <h2 class="titre-section">Services</h2>
+      <p class="muet">L'ordre ici est celui des tuiles (et des touches 1 à 9). Les changements sont gardés dès que tu quittes un champ. L'image remplace le nom dans la tuile.</p>
+      <div id="editeur-services"></div>
+      <input type="file" id="fichier-image" accept="image/png,image/jpeg,image/svg+xml,image/webp" hidden>
+      <button class="bouton-contour" id="btn-ajout-service">+ Ajouter un service</button>
+    </div>
+
+    <div class="bloc">
+      <h2 class="titre-section">Mes données</h2>
+      <p class="muet">Exporter : garde une copie de tout (sauvegarde ou transfert vers un autre appareil). La clé TMDB n'est pas incluse.</p>
+      <div class="rangee" style="margin-top:0">
+        <button class="bouton-plein" id="btn-telecharger" hidden>Télécharger le fichier .json</button>
+        <button class="bouton-contour" id="btn-exporter">Afficher le texte</button>
+        <button class="bouton-contour" id="btn-copier" hidden>Copier</button>
+      </div>
+      <textarea class="champ" id="zone-export" readonly hidden style="margin-top:12px" aria-label="Données exportées"></textarea>
+
+      <p class="muet" style="margin-top:28px">Importer : choisis un fichier .json ou colle le texte ci-dessous. Ça remplace tes données actuelles.</p>
+      <textarea class="champ" id="zone-import" placeholder='{"services": [...], "liste": [...]}' aria-label="Données à importer"></textarea>
+      <div class="rangee">
+        <input type="file" id="fichier-import" accept=".json,application/json" hidden>
+        <button class="bouton-contour" id="btn-fichier">Choisir un fichier</button>
+        <button class="bouton-plein" id="btn-importer">Importer</button>
+      </div>
+
+      <p class="muet" style="margin-top:28px" id="texte-exclus"></p>
+      <button class="bouton-contour" id="btn-exclus">Tout réafficher</button>
+    </div>
+
+    <details class="bloc bloc-avance" id="bloc-tmdb">
+      <summary><h2 class="titre-section">Avancé : clé API TMDB <span class="badge">optionnel</span></h2></summary>
+      <p class="note-serveur" id="note-serveur" hidden>✓ Sur ce site, le mode Découvrir marche déjà pour tout le monde, sans clé. Une clé perso ici est seulement utile en dépannage.</p>
+      <p class="muet">Tu n'as pas besoin de ça pour utiliser Watchall. Sert seulement au mode Découvrir quand Watchall n'est pas ouvert dans Claude (par exemple sur Netlify) : vraies idées de films et de séries, avec leur disponibilité réelle au Canada. Colle le « Jeton d'accès en lecture à l'API » (recommandé) ou la « Clé API » de ton compte TMDB. Elle reste seulement dans ce navigateur.</p>
+      <div class="rangee" style="margin-top:0">
+        <input class="champ" type="password" id="tmdb-cle" placeholder="Colle ta clé ici" style="max-width:420px" autocomplete="off" aria-label="Clé API TMDB">
+        <button class="bouton-contour" id="btn-tmdb">Enregistrer</button>
+        <button class="lien-discret" id="btn-tester-tmdb">Tester la clé</button>
+      </div>
+    </details>
+
+    <div class="bloc" id="bloc-partage">
+      <h2 class="titre-section">Configuration partagée</h2>
+      <!-- Pour le propriétaire -->
+      <div id="partage-proprio" hidden>
+        <p class="muet">Publie tes services, liens, couleurs, images et recadrages comme version de base pour tous ceux qui ouvrent ton lien. Tes prix, ta liste, tes notes et ta clé restent privés.</p>
+        <button class="bouton-plein" id="btn-publier-config">Publier ma configuration pour tout le monde</button>
+      </div>
+      <!-- Pour les visiteurs -->
+      <div id="partage-visiteur" hidden>
+        <p class="muet" id="texte-visiteur"></p>
+        <div class="rangee" style="margin-top:0">
+          <button class="bouton-contour" id="btn-suivre-config" hidden>Revenir à la configuration de Watchall</button>
+          <button class="lien-discret" id="btn-je-suis-proprio" hidden>Je suis le propriétaire</button>
+        </div>
+      </div>
+      <p class="statut-partage" id="statut-partage"></p>
+    </div>
+
+    <div class="bloc">
+      <h2 class="titre-section">Tout remettre à zéro</h2>
+      <p class="muet">Efface ta liste, tes notes, tes prix, tes images et tes services modifiés, puis remet les services de départ.</p>
+      <button class="bouton-contour danger" id="btn-reset">Réinitialiser</button>
+    </div>
+  </section>
+</main>
+
+<!-- Crédits obligatoires pour les données de TMDB et de JustWatch -->
+<footer class="credits">
+  Données de films et affiches : <a href="https://www.themoviedb.org" target="_blank" rel="noopener noreferrer">TMDB</a>.
+  Disponibilités au Canada : <a href="https://www.justwatch.com/ca" target="_blank" rel="noopener noreferrer">JustWatch</a>.
+  Ce produit utilise l'API TMDB, mais n'est ni approuvé ni certifié par TMDB.
+</footer>
+
+<!-- ===================== PALETTE DE COMMANDES ===================== -->
+<div class="voile" id="palette">
+  <div class="palette" role="dialog" aria-modal="true" aria-label="Recherche rapide">
+    <input id="palette-champ" placeholder="Un service, un titre ou une action…" autocomplete="off" spellcheck="false" aria-label="Rechercher">
+    <ul id="palette-resultats" role="listbox"></ul>
+    <div class="palette-pied">
+      <span><kbd>↑</kbd><kbd>↓</kbd>naviguer</span>
+      <span><kbd>Entrée</kbd>choisir</span>
+      <span><kbd>Échap</kbd>fermer</span>
+    </div>
+  </div>
+</div>
+
+<!-- ===================== FENÊTRE MODALE ===================== -->
+<div class="voile" id="modale">
+  <div class="modale" role="dialog" aria-modal="true">
+    <button class="fermer" data-action="fermer-modale" aria-label="Fermer">×</button>
+    <div id="modale-contenu"></div>
+  </div>
+</div>
+
+<!-- ===================== CARTE « BON RETOUR » ===================== -->
+<div class="retour" id="retour" role="dialog" aria-label="Bon retour" aria-live="polite">
+  <button class="fermer" data-retour="fermer" aria-label="Fermer">×</button>
+  <div id="retour-contenu"></div>
+</div>
+
+<div class="toast" id="toast" role="status" aria-live="polite"></div>
+
+<script id="app">
+"use strict";
+
+// Copie de la page telle qu'elle a été servie, AVANT que le code la modifie.
+// Sert seulement au propriétaire pour republier la page avec sa configuration.
+const SOURCE_PAGE = (() => { try { return document.documentElement.outerHTML; } catch (e) { return ""; } })();
+
+/* =========================================================
+   1. DONNÉES DE DÉPART ET STOCKAGE
+   ========================================================= */
+const CLE_STOCKAGE = "ecrans.tableauStreaming.v1"; // même clé que la v1 : tes données sont gardées
+const JOUR = 86400000; // millisecondes dans une journée
+
+// Les 5 services pré-remplis (prix à 0 : tu les entres toi-même)
+const SERVICES_DEPART = [
+  { nom: "Netflix",     url: "https://www.netflix.com/",    couleur: "#e50914" },
+  { nom: "Disney+",     url: "https://www.disneyplus.com/", couleur: "#4b6bff" },
+  { nom: "Crave",       url: "https://www.crave.ca/",       couleur: "#22b8cf" },
+  { nom: "Prime Video", url: "https://www.primevideo.com/", couleur: "#f0a020" },
+  { nom: "YouTube",     url: "https://www.youtube.com/",    couleur: "#ff5a5f" }
+];
+
+// « fini » = « Déjà vu » (on garde la même valeur interne que la v1)
+const STATUTS = { "a-voir": "À voir", "en-cours": "En cours", "fini": "Déjà vu" };
+const TYPES = { film: "Film", serie: "Série" };
+const GENRES = ["action", "comédie", "drame", "horreur", "thriller", "science-fiction", "animation", "documentaire", "romance", "policier"];
+const majuscule = s => s.charAt(0).toUpperCase() + s.slice(1);
+
+// Filtres du mode Découvrir (gardés d'une fois à l'autre)
+function filtresDepart() {
+  return { temps: "", type: "", genres: [], ambiance: "", avecQui: "", langue: "", plateformesExclues: [], texte: "" };
+}
+
+// Petit identifiant unique pour chaque service / titre
+function uid() {
+  return Math.random().toString(36).slice(2, 9) + Date.now().toString(36).slice(-4);
+}
+
+// Construit un état tout neuf (utilisé si le stockage est vide ou brisé)
+function etatDepart() {
+  const maintenant = Date.now();
+  const e = etatDepartBase(maintenant);
+  if (CONFIG) appliquerConfig(e); // appelée seulement après la lecture de CONFIG
+  return e;
+}
+function etatDepartBase(maintenant) {
+  return {
+    version: 2,
+    theme: "sombre",
+    services: SERVICES_DEPART.map(s => ({
+      id: uid(), nom: s.nom, url: s.url, couleur: s.couleur, image: "",
+      ajustement: "auto", ajusteManuel: false, zoom: 1, posX: 50, posY: 50,
+      prix: 0, renouvellement: "", derniereOuverture: null, ajouteLe: maintenant
+    })),
+    liste: [],
+    exclus: [],               // titres marqués « Pas pour moi »
+    filtresDecouvrir: filtresDepart(),
+    tmdbCle: "",
+    suitConfigPartagee: true, // un nouveau visiteur suit la configuration du propriétaire
+    proprietaire: false
+  };
+}
+
+// Vérifie si le localStorage marche (il peut être bloqué dans certains navigateurs)
+const stockageOK = (() => {
+  try {
+    localStorage.setItem("__test", "1");
+    localStorage.removeItem("__test");
+    return true;
+  } catch (e) { return false; }
+})();
+
+// Nettoie une adresse : ajoute https:// si oublié, refuse ce qui n'est pas http(s)
+function urlPropre(u) {
+  let s = String(u || "").trim();
+  if (!s) return "";
+  if (!/^https?:\/\//i.test(s)) s = "https://" + s.replace(/^\/+/, "");
+  try { return new URL(s).href; } catch (e) { return ""; }
+}
+const couleurValide = c => /^#[0-9a-f]{6}$/i.test(String(c || ""));
+const dateValide = d => /^\d{4}-\d{2}-\d{2}$/.test(String(d || ""));
+// Une image sauvegardée doit être une image PNG ou JPEG encodée (rien d'autre n'est accepté)
+const imageValide = i => typeof i === "string" && i.length < 1500000 && /^data:image\/(png|jpeg);base64,[A-Za-z0-9+/=]+$/.test(i);
+// Garde un nombre entre min et max (sinon la valeur par défaut)
+function borne(v, min, max, defaut) {
+  const n = Number(v);
+  return Number.isFinite(n) ? Math.min(max, Math.max(min, n)) : defaut;
+}
+const texteCourt = (v, max) => typeof v === "string" ? v.trim().slice(0, max) : "";
+
+/* Vérifie et répare des données (venant du stockage ou d'un import).
+   strict = true : on refuse si ça ne ressemble pas à nos données. */
+function normaliser(d, strict) {
+  if (!d || typeof d !== "object") throw new Error("Données illisibles.");
+  if (strict && !Array.isArray(d.services) && !Array.isArray(d.liste)) {
+    throw new Error("Ce fichier ne ressemble pas à un export de l'app.");
+  }
+  const base = etatDepartBase(Date.now()); // (pas etatDepart : la config n'est pas encore lue ici)
+  const services = Array.isArray(d.services)
+    ? d.services
+        .filter(s => s && typeof s.nom === "string" && s.nom.trim())
+        .map(s => {
+          const o = {
+            id: String(s.id || uid()),
+            nom: s.nom.trim().slice(0, 40),
+            url: urlPropre(s.url),
+            couleur: couleurValide(s.couleur) ? s.couleur : "#888888",
+            image: imageValide(s.image) ? s.image : "",
+            // « auto » (par défaut) : l'app choisit seule entre remplir et image entière
+            ajustement: ["auto", "remplir", "entiere"].includes(s.ajustement) ? s.ajustement : "auto",
+            ajusteManuel: s.ajusteManuel === true, // vrai si la personne a choisi elle-même
+            zoom: borne(s.zoom, 1, 3, 1),
+            posX: borne(s.posX, 0, 100, 50),
+            posY: borne(s.posY, 0, 100, 50),
+            prix: Math.max(0, Math.round((Number(s.prix) || 0) * 100) / 100),
+            renouvellement: dateValide(s.renouvellement) ? s.renouvellement : "",
+            derniereOuverture: Number(s.derniereOuverture) || null,
+            ajouteLe: Number(s.ajouteLe) || Date.now()
+          };
+          // Anciennes données : « remplir » jamais touché -> passe au mode automatique
+          if (o.ajustement === "remplir" && !o.ajusteManuel && o.zoom === 1 && o.posX === 50 && o.posY === 50) o.ajustement = "auto";
+          return o;
+        })
+    : base.services;
+  const liste = Array.isArray(d.liste)
+    ? d.liste
+        .filter(t => t && typeof t.titre === "string" && t.titre.trim())
+        .map(t => ({
+          id: String(t.id || uid()),
+          titre: t.titre.trim().slice(0, 120),
+          serviceId: String(t.serviceId || ""),
+          statut: STATUTS[t.statut] ? t.statut : "a-voir",
+          duree: Math.max(0, Math.round(Number(t.duree) || 0)),
+          type: TYPES[t.type] ? t.type : "",
+          genres: Array.isArray(t.genres) ? t.genres.filter(g => GENRES.includes(g)).slice(0, 4) : [],
+          annee: Number(t.annee) >= 1900 && Number(t.annee) <= 2100 ? Math.round(Number(t.annee)) : null,
+          note: Math.min(5, Math.max(0, Math.round(Number(t.note) || 0))),
+          tmdbId: Number(t.tmdbId) > 0 ? Math.round(Number(t.tmdbId)) : null,
+          media: t.media === "movie" || t.media === "tv" ? t.media : null,
+          ajouteLe: Number(t.ajouteLe) || Date.now()
+        }))
+    : [];
+  const f = d.filtresDecouvrir && typeof d.filtresDecouvrir === "object" ? d.filtresDecouvrir : {};
+  const filtres = {
+    temps: ["court", "moyen", "long"].includes(f.temps) ? f.temps : "",
+    type: TYPES[f.type] ? f.type : "",
+    genres: Array.isArray(f.genres) ? f.genres.filter(g => GENRES.includes(g)) : [],
+    ambiance: typeof f.ambiance === "string" ? f.ambiance.slice(0, 20) : "",
+    avecQui: typeof f.avecQui === "string" ? f.avecQui.slice(0, 20) : "",
+    langue: ["fr", "en"].includes(f.langue) ? f.langue : "",
+    plateformesExclues: Array.isArray(f.plateformesExclues) ? f.plateformesExclues.map(String).slice(0, 50) : [],
+    texte: texteCourt(f.texte, 200)
+  };
+  return {
+    version: 2,
+    theme: d.theme === "clair" ? "clair" : "sombre",
+    services,
+    liste,
+    exclus: Array.isArray(d.exclus) ? d.exclus.map(x => texteCourt(x, 120)).filter(Boolean).slice(-500) : [],
+    filtresDecouvrir: filtres,
+    tmdbCle: typeof d.tmdbCle === "string" ? d.tmdbCle : "",
+    // Données déjà existantes : on garde TES services (on ne suit la config que si c'était déjà le cas)
+    suitConfigPartagee: d.suitConfigPartagee === true,
+    proprietaire: d.proprietaire === true
+  };
+}
+
+function charger() {
+  try {
+    const brut = localStorage.getItem(CLE_STOCKAGE);
+    if (!brut) return etatDepart();
+    return normaliser(JSON.parse(brut), false);
+  } catch (e) {
+    return etatDepart(); // stockage vide, bloqué ou abîmé : on repart à neuf
+  }
+}
+
+let avertiEchec = false;
+function sauvegarder() {
+  try {
+    localStorage.setItem(CLE_STOCKAGE, JSON.stringify(etat));
+    return true;
+  } catch (e) {
+    if (!avertiEchec) {
+      toast(e && e.name === "QuotaExceededError"
+        ? "Stockage plein : essaie une image plus légère."
+        : "Impossible de sauvegarder dans ce navigateur.");
+      avertiEchec = true;
+      setTimeout(() => { avertiEchec = false; }, 5000);
+    }
+    return false;
+  }
+}
+
+/* Configuration partagée intégrée à la page (null si le propriétaire n'a encore rien publié).
+   On garde seulement ce qui est commun à tout le monde : rien de personnel. */
+function lireConfig() {
+  try {
+    const brut = JSON.parse(document.getElementById("config-partagee").textContent || "null");
+    if (!brut || !Array.isArray(brut.services) || !brut.services.length) return null;
+    const services = normaliser({ services: brut.services }, false).services.map(s => ({
+      id: s.id, nom: s.nom, url: s.url, couleur: s.couleur, image: s.image,
+      ajustement: s.ajustement, zoom: s.zoom, posX: s.posX, posY: s.posY
+    }));
+    return services.length ? { services, publieLe: Number(brut.publieLe) || null } : null;
+  } catch (e) { return null; }
+}
+const CONFIG = lireConfig();
+
+// Copie les services partagés dans l'état d'un visiteur, en gardant ses infos perso (prix, dates)
+function appliquerConfig(e) {
+  if (!CONFIG) return;
+  const maintenant = Date.now();
+  e.services = CONFIG.services.map(sc => {
+    const local = e.services.find(s => s.id === sc.id) || {};
+    return {
+      ...sc,
+      prix: local.prix || 0,
+      renouvellement: local.renouvellement || "",
+      derniereOuverture: local.derniereOuverture || null,
+      ajouteLe: local.ajouteLe || maintenant
+    };
+  });
+}
+
+let etat = charger();
+// Visiteur qui suit la configuration : on la met à jour à chaque visite
+if (CONFIG && etat.suitConfigPartagee && !etat.proprietaire) appliquerConfig(etat);
+
+/* =========================================================
+   2. CAPACITÉS DE LA PAGE (demander à Claude, télécharger)
+   Elles n'existent que dans claude.ai : ailleurs, elles valent null
+   et l'app marche quand même, sans ces options.
+   ========================================================= */
+const capacite = nom => (window.claude && typeof window.claude.use === "function")
+  ? window.claude.use(nom).catch(() => null)
+  : Promise.resolve(null);
+const promesseClaude = capacite("sample");
+let claudeDispo = null; // null = on ne sait pas encore, false = pas de Claude ici (ex. site sur Netlify)
+promesseClaude.then(s => { claudeDispo = !!s; });
+// Une source d'idées pour Découvrir ? (Claude dans claude.ai, ou une clé TMDB enregistrée)
+// null tant qu'on ne sait pas encore si Claude est là.
+// Le serveur Watchall (fonction Netlify qui garde la clé TMDB cachée) répond-il ?
+// null = on ne sait pas encore, true = oui (Découvrir marche pour tout le monde), false = non
+const SERVEUR_TMDB = "/.netlify/functions/tmdb";
+let serveurTmdb = null;
+const promesseServeur = (location.protocol.startsWith("http") && !location.hostname.endsWith("claude.ai") && !location.hostname.endsWith("claudeusercontent.com"))
+  ? fetch(SERVEUR_TMDB + "?chemin=/configuration", { headers: { accept: "application/json" } })
+      .then(r => r.ok).catch(() => false)
+  : Promise.resolve(false);
+promesseServeur.then(ok => {
+  serveurTmdb = ok;
+  if ($("#panneau-mode")) rendrePanneau();               // fenêtre « On regarde quoi ? » ouverte : on la met à jour
+  const note = $("#note-serveur"); if (note) note.hidden = !ok;   // petite note dans Paramètres
+});
+const decouvrirPossible = () => !!etat.tmdbCle || serveurTmdb === true || claudeDispo !== false || serveurTmdb === null;
+const promesseTelechargement = capacite("downloads");
+
+/* =========================================================
+   3. OUTILS (format, dates, sécurité)
+   ========================================================= */
+const $ = sel => document.querySelector(sel);
+
+// Échappe le texte pour l'insérer dans du HTML sans risque
+function esc(s) {
+  return String(s ?? "").replace(/[&<>"']/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
+}
+// Enlève les accents et la casse pour comparer des textes (« Éva » = « eva »)
+const sansAccents = s => String(s || "").normalize("NFD").replace(/[̀-ͯ]/g, "").toLowerCase().trim();
+
+const fmtArgent = new Intl.NumberFormat("fr-CA", { style: "currency", currency: "CAD" });
+const fmtJourMois = new Intl.DateTimeFormat("fr-CA", { day: "numeric", month: "long" });
+const fmtDateLongue = new Intl.DateTimeFormat("fr-CA", { weekday: "long", day: "numeric", month: "long" });
+
+function debutAujourdhui() { const d = new Date(); d.setHours(0, 0, 0, 0); return d; }
+function joursDepuis(ts) { return Math.floor((debutAujourdhui() - new Date(ts).setHours(0, 0, 0, 0)) / JOUR); }
+function ilYa(ts) {
+  const n = joursDepuis(ts);
+  if (n <= 0) return "aujourd'hui";
+  if (n === 1) return "hier";
+  return `il y a ${n} jours`;
+}
+function fmtDuree(min) {
+  if (!min) return "";
+  if (min < 60) return `${min} min`;
+  const h = Math.floor(min / 60), m = min % 60;
+  return m ? `${h} h ${String(m).padStart(2, "0")}` : `${h} h`;
+}
+// Catégorie de durée utilisée par les filtres
+function categorieDuree(min) {
+  if (!min) return "";
+  return min <= 30 ? "court" : min <= 75 ? "moyen" : "long";
+}
+
+// Ajoute k mois à une date en gardant le même jour (ou le dernier jour du mois si trop court)
+function ajouterMois(an, mois0, jour, k) {
+  const total = mois0 + k;
+  const a = an + Math.floor(total / 12);
+  const m = ((total % 12) + 12) % 12;
+  const dernier = new Date(a, m + 1, 0).getDate();
+  return new Date(a, m, Math.min(jour, dernier));
+}
+// Prochaine date de renouvellement (mensuel) à partir de la date entrée
+function prochainRenouvellement(iso) {
+  if (!dateValide(iso)) return null;
+  const [a, m, j] = iso.split("-").map(Number);
+  const aujourdhui = debutAujourdhui();
+  let k = 0, d = ajouterMois(a, m - 1, j, 0);
+  while (d < aujourdhui && k < 1200) { k++; d = ajouterMois(a, m - 1, j, k); }
+  return d;
+}
+
+// Nombre de jours sans ouverture (on compte depuis l'ajout si jamais ouvert)
+function joursSansOuverture(s) { return joursDepuis(s.derniereOuverture || s.ajouteLe || Date.now()); }
+
+const serviceParId = id => etat.services.find(s => s.id === id);
+// Retrouve un de mes services à partir d'un nom écrit par Claude (« Prime Video », « prime »…)
+function serviceParNom(nom) {
+  const n = sansAccents(nom);
+  if (!n) return null;
+  return etat.services.find(s => sansAccents(s.nom) === n)
+    || etat.services.find(s => n.includes(sansAccents(s.nom)) || sansAccents(s.nom).includes(n))
+    || null;
+}
+
+// Un titre est-il déjà connu (dans ma liste ou masqué) ?
+function titreConnu(titre) {
+  const n = sansAccents(titre);
+  return etat.liste.some(t => sansAccents(t.titre) === n) || etat.exclus.some(x => sansAccents(x) === n);
+}
+
+// Étoiles de 1 à 5 (cliquables)
+function etoilesHTML(note, act) {
+  let html = `<span class="etoiles" role="group" aria-label="Note sur 5">`;
+  for (let i = 1; i <= 5; i++) {
+    html += `<button type="button" class="${i <= note ? "pleine" : ""}" data-act="${act}" data-note="${i}" aria-label="${i} sur 5">★</button>`;
+  }
+  return html + `</span>`;
+}
+
+let minuterieToast;
+function toast(msg) {
+  const t = $("#toast");
+  t.textContent = msg;
+  t.classList.add("visible");
+  clearTimeout(minuterieToast);
+  minuterieToast = setTimeout(() => t.classList.remove("visible"), 2800);
+}
+
+/* =========================================================
+   4. OUVRIR UN SERVICE
+   On note la date d'ouverture (pour l'avertissement des 30 jours).
+   ========================================================= */
+function noterOuverture(id) {
+  const s = serviceParId(id);
+  if (!s) return;
+  s.derniereOuverture = Date.now();
+  sauvegarder();
+  // On retient le service ouvert pour dire « Bon retour » quand tu reviens
+  retourAttendu = { serviceId: id, depuis: Date.now() };
+  // On rafraîchit un peu plus tard pour ne pas gêner l'ouverture du lien
+  setTimeout(() => { rendreAccueil(); rendreAbonnements(); }, 150);
+}
+
+// Utilisé par le clavier et la palette : on simule un clic sur un vrai lien
+function ouvrirService(s) {
+  if (!s || !s.url) { toast("Ce service n'a pas de lien. Ajoute-le dans Paramètres."); return; }
+  noterOuverture(s.id);
+  const a = document.createElement("a");
+  a.href = s.url; a.target = "_blank"; a.rel = "noopener noreferrer";
+  document.body.appendChild(a);
+  a.click();
+  a.remove();
+}
+
+/* =========================================================
+   5. NAVIGATION ENTRE LES VUES (via le # de l'adresse)
+   ========================================================= */
+/* La vue affichée est gardée dans une variable. Le # de l'adresse est mis à jour
+   seulement quand c'est permis : dans certains aperçus (fichier ouvert dans une
+   fenêtre de prévisualisation), changer l'adresse vidait la page. */
+const VUES = ["accueil", "liste", "abonnements", "parametres"];
+function vueDansAdresse() {
+  try {
+    const h = location.hash.replace("#", "");
+    return VUES.includes(h) ? h : null;
+  } catch (e) { return null; }
+}
+let vueActive = vueDansAdresse() || "accueil";
+function vueCourante() { return vueActive; }
+function afficherVue() {
+  const v = vueCourante();
+  VUES.forEach(n => $("#vue-" + n).classList.toggle("visible", n === v));
+  document.querySelectorAll(".nav a").forEach(a => a.classList.toggle("actif", a.dataset.vue === v));
+  window.scrollTo({ top: 0 });
+}
+function allerA(v) {
+  vueActive = VUES.includes(v) ? v : "accueil";
+  try { history.replaceState(null, "", "#" + vueActive); } catch (e) { /* adresse non modifiable ici : pas grave */ }
+  afficherVue();
+}
+// Si l'adresse change toute seule (bouton Précédent, lien partagé), on suit
+window.addEventListener("hashchange", () => {
+  const v = vueDansAdresse();
+  if (v && v !== vueActive) { vueActive = v; afficherVue(); }
+});
+// Tous les liens internes (#liste, #parametres…) passent par allerA au lieu de changer de page
+document.addEventListener("click", e => {
+  const lien = e.target.closest('a[href^="#"]');
+  if (!lien || e.ctrlKey || e.metaKey || e.shiftKey) return;
+  const v = lien.getAttribute("href").slice(1);
+  if (VUES.includes(v)) { e.preventDefault(); allerA(v); }
+});
+
+/* =========================================================
+   6. ACCUEIL
+   ========================================================= */
+/* ---------- Cadrage automatique des images ----------
+   1) On lit la couleur du bord de l'image (ex. rouge pour un logo sur fond rouge)
+      et on en remplit le fond de la tuile : même « entière », l'image paraît pleine.
+   2) En mode « auto », si la forme de l'image est trop différente de la tuile
+      (ex. logo carré dans une case large), on l'affiche entière au lieu de la couper. */
+const cacheCouleurs = new Map();
+function couleurBordImage(img) {
+  try {
+    const c = document.createElement("canvas");
+    const w = c.width = 48, ht = c.height = 48;
+    const ctx = c.getContext("2d");
+    ctx.drawImage(img, 0, 0, w, ht);
+    const px = ctx.getImageData(0, 0, w, ht).data;
+    let r = 0, g = 0, b = 0, n = 0, transparents = 0;
+    for (let y = 0; y < ht; y++) for (let x = 0; x < w; x++) {
+      if (x > 1 && x < w - 2 && y > 1 && y < ht - 2) continue; // seulement le contour
+      const i = (y * w + x) * 4;
+      if (px[i + 3] < 200) { transparents++; continue; }
+      r += px[i]; g += px[i + 1]; b += px[i + 2]; n++;
+    }
+    if (!n || transparents > n) return null; // logo transparent : on garde le fond normal
+    return `rgb(${Math.round(r / n)}, ${Math.round(g / n)}, ${Math.round(b / n)})`;
+  } catch (e) { return null; }
+}
+function appliquerCadrage(tuile, s) {
+  const img = tuile.querySelector(".tuile-fond img");
+  if (!img || !s) return;
+  const faire = () => {
+    const cle = s.id + ":" + s.image.length;
+    if (!cacheCouleurs.has(cle)) cacheCouleurs.set(cle, couleurBordImage(img));
+    const couleur = cacheCouleurs.get(cle);
+    tuile.querySelector(".tuile-fond").style.background = couleur || "";
+    let entiere = s.ajustement === "entiere";
+    if (s.ajustement === "auto") {
+      const ratioImage = (img.naturalWidth || 1) / (img.naturalHeight || 1);
+      const ratioTuile = (tuile.clientWidth || 1) / (tuile.clientHeight || 1);
+      entiere = Math.abs(Math.log(ratioImage / ratioTuile)) > 0.15; // formes différentes : on ne coupe pas
+    }
+    tuile.classList.toggle("entiere", entiere);
+  };
+  if (img.complete && img.naturalWidth) faire(); else img.addEventListener("load", faire, { once: true });
+}
+function cadrerTout() {
+  document.querySelectorAll(".tuile.avec-image[data-id]").forEach(t => appliquerCadrage(t, serviceParId(t.dataset.id)));
+}
+let minuterieCadrage;
+window.addEventListener("resize", () => { clearTimeout(minuterieCadrage); minuterieCadrage = setTimeout(cadrerTout, 150); });
+
+// Style du recadrage d'une image (zoom et position)
+function styleImage(s) {
+  return `--z:${borne(s.zoom, 1, 3, 1)};--x:${borne(s.posX, 0, 100, 50)}%;--y:${borne(s.posY, 0, 100, 50)}%`;
+}
+
+function rendreAccueil() {
+  const h = new Date().getHours();
+  const salut = h < 12 ? "Bonjour" : h < 18 ? "Bon après-midi" : "Bonsoir";
+  $("#salut").innerHTML = `${salut}<em>.</em>`;
+  $("#date-du-jour").textContent = fmtDateLongue.format(new Date());
+
+  const zone = $("#tuiles");
+  if (!etat.services.length) {
+    zone.innerHTML = `<div class="vide" style="grid-column:1/-1">Aucun service pour l'instant. <a href="#parametres">Ajoute-en un dans Paramètres</a>.</div>`;
+  } else {
+    // Les numéros ne sont plus affichés : les touches 1 à 9 marchent quand même
+    zone.innerHTML = etat.services.map((s, i) => {
+      const jours = joursSansOuverture(s);
+      const ouvert = s.derniereOuverture ? "Ouvert " + ilYa(s.derniereOuverture) : "Jamais ouvert";
+      // Avec une image, le nom passe en petit dans la ligne du bas
+      const meta = s.image ? `${s.nom} · ${ouvert.toLowerCase()}` : ouvert;
+      const haut = s.image
+        ? `<span class="tuile-fond"><img src="${s.image}" alt="" style="${styleImage(s)}"></span>`
+        : `<span class="tuile-nom">${esc(s.nom)}</span>`;
+      const classes = s.image ? ` avec-image${s.ajustement === "entiere" ? " entiere" : ""}` : "";
+      return `
+        <a class="tuile${classes}" href="${esc(s.url || "#parametres")}" ${s.url ? 'target="_blank" rel="noopener noreferrer"' : ""}
+           data-id="${esc(s.id)}" style="--c:${esc(s.couleur)}" aria-label="Ouvrir ${esc(s.nom)}${i < 9 ? ", touche " + (i + 1) : ""}">
+          ${haut}
+          <span class="tuile-pied">
+            <span class="trait"></span>
+            <span class="tuile-meta${jours > 30 ? " vieux" : ""}">${esc(meta)}</span>
+          </span>
+        </a>`;
+    }).join("");
+  }
+
+  cadrerTout();
+
+  // Petite section « En cours » si des titres sont commencés
+  const enCours = etat.liste.filter(t => t.statut === "en-cours").slice(0, 4);
+  $("#en-cours-accueil").innerHTML = enCours.length
+    ? `<h2>En cours</h2><ul class="items">${enCours.map(itemHTML).join("")}</ul>`
+    : "";
+}
+
+// Clic sur une tuile : on laisse le lien s'ouvrir et on note l'ouverture
+$("#tuiles").addEventListener("click", e => {
+  const t = e.target.closest(".tuile");
+  if (t && t.dataset.id) noterOuverture(t.dataset.id);
+});
+
+/* =========================================================
+   7. MA LISTE
+   ========================================================= */
+let filtreListe = "tout";
+
+function optionsServices(selection) {
+  if (!etat.services.length) return `<option value="">Aucun service</option>`;
+  return etat.services.map(s =>
+    `<option value="${esc(s.id)}"${s.id === selection ? " selected" : ""}>${esc(s.nom)}</option>`).join("");
+}
+const optionsGenres = (vide, selection) => `<option value="">${vide}</option>` +
+  GENRES.map(g => `<option value="${g}"${g === selection ? " selected" : ""}>${majuscule(g)}</option>`).join("");
+
+// Une ligne de titre (réutilisée sur l'accueil et dans Ma liste)
+function itemHTML(t) {
+  const s = serviceParId(t.serviceId);
+  const morceaux = [
+    s ? s.nom : "Plateforme retirée",
+    TYPES[t.type] || "",
+    t.genres.map(majuscule).join(", "),
+    fmtDuree(t.duree) + (t.type === "serie" && t.duree ? " / épisode" : ""),
+    t.annee || ""
+  ].filter(Boolean);
+  return `
+    <li class="item${t.statut === "fini" ? " fini" : ""}" data-id="${esc(t.id)}">
+      <span class="point" style="--c:${s ? esc(s.couleur) : "var(--pale)"}"></span>
+      <div class="item-texte">
+        <span class="item-titre">${esc(t.titre)}</span>
+        <span class="item-meta">${esc(morceaux.join(" · "))}</span>
+        ${t.statut === "fini" ? etoilesHTML(t.note, "note") : ""}
+      </div>
+      <button class="statut ${t.statut}" data-act="statut" title="Changer le statut">${STATUTS[t.statut]}</button>
+      ${s && s.url ? `<a class="icone" href="${esc(s.url)}" target="_blank" rel="noopener noreferrer" data-act="ouvrir" aria-label="Ouvrir ${esc(s.nom)}">↗</a>` : ""}
+      <button class="icone" data-act="suppr" aria-label="Retirer de ma liste">×</button>
+    </li>`;
+}
+
+function rendreListe() {
+  const form = $("#form-ajout");
+  const choixActuel = form.service.value;
+  form.service.innerHTML = optionsServices(choixActuel || (etat.services[0] && etat.services[0].id));
+  if (!form.genre.options.length) form.genre.innerHTML = optionsGenres("Genre ?", "");
+
+  // Filtres secondaires : on ne remplit les listes qu'une fois (sauf les plateformes)
+  const fg = $("#filtre-genre");
+  if (!fg.options.length) fg.innerHTML = optionsGenres("Tous les genres", "");
+  const fp = $("#filtre-plateforme");
+  const plateformeChoisie = fp.value;
+  fp.innerHTML = `<option value="">Toutes les plateformes</option>` + etat.services.map(s =>
+    `<option value="${esc(s.id)}"${s.id === plateformeChoisie ? " selected" : ""}>${esc(s.nom)}</option>`).join("");
+  ["#filtre-type", "#filtre-genre", "#filtre-duree", "#filtre-plateforme"].forEach(sel => $(sel).classList.toggle("actif", !!$(sel).value));
+
+  const compte = { tout: etat.liste.length, "a-voir": 0, "en-cours": 0, fini: 0 };
+  etat.liste.forEach(t => compte[t.statut]++);
+  $("#compte-liste").textContent = compte.tout
+    ? `${compte.tout} titre${compte.tout > 1 ? "s" : ""} · ${compte["a-voir"]} à voir · ${compte["en-cours"]} en cours · ${compte.fini} déjà vu${compte.fini > 1 ? "s" : ""}`
+    : "Rien encore. Ajoute ton premier titre, ou laisse « Je sais pas quoi regarder » te proposer des idées.";
+
+  const libelles = { tout: "Tout", ...STATUTS };
+  $("#filtres").innerHTML = Object.keys(libelles).map(k =>
+    `<button data-filtre="${k}" class="${filtreListe === k ? "actif" : ""}">${libelles[k]}<small>${compte[k]}</small></button>`).join("");
+
+  // Application de tous les filtres
+  const q = sansAccents($("#recherche-liste").value);
+  const fType = $("#filtre-type").value, fGenre = $("#filtre-genre").value;
+  const fDuree = $("#filtre-duree").value, fPlat = $("#filtre-plateforme").value;
+  const ordre = { "en-cours": 0, "a-voir": 1, fini: 2 };
+  const visibles = etat.liste
+    .filter(t => filtreListe === "tout" || t.statut === filtreListe)
+    .filter(t => !q || sansAccents(t.titre).includes(q))
+    .filter(t => !fType || t.type === fType)
+    .filter(t => !fGenre || t.genres.includes(fGenre))
+    .filter(t => !fDuree || categorieDuree(t.duree) === fDuree)
+    .filter(t => !fPlat || t.serviceId === fPlat)
+    // Dans « Déjà vu » : les mieux notés d'abord. Sinon : en cours, à voir, déjà vu, les plus récents en premier
+    .sort((a, b) => filtreListe === "fini"
+      ? (b.note - a.note) || (b.ajouteLe - a.ajouteLe)
+      : (ordre[a.statut] - ordre[b.statut]) || (b.ajouteLe - a.ajouteLe));
+
+  $("#items-liste").innerHTML = visibles.length
+    ? visibles.map(itemHTML).join("")
+    : (etat.liste.length ? `<li class="vide" style="margin-top:16px">Aucun titre ne correspond à ces filtres.</li>` : "");
+}
+
+$("#form-ajout").addEventListener("submit", e => {
+  e.preventDefault();
+  const f = e.target;
+  const titre = f.titre.value.trim();
+  if (!titre) return;
+  etat.liste.push({
+    id: uid(),
+    titre: titre.slice(0, 120),
+    serviceId: f.service.value,
+    statut: f.statut.value,
+    duree: Math.max(0, Math.round(Number(f.duree.value) || 0)),
+    type: f.type.value,
+    genres: f.genre.value ? [f.genre.value] : [],
+    annee: null,
+    note: 0,
+    ajouteLe: Date.now()
+  });
+  sauvegarder();
+  f.titre.value = ""; f.duree.value = ""; f.statut.value = "a-voir"; f.type.value = ""; f.genre.value = "";
+  f.titre.focus();
+  rendreListe(); rendreAccueil();
+  toast(`« ${titre} » ajouté à ta liste`);
+});
+
+$("#filtres").addEventListener("click", e => {
+  const b = e.target.closest("[data-filtre]");
+  if (!b) return;
+  filtreListe = b.dataset.filtre;
+  rendreListe();
+});
+$("#recherche-liste").addEventListener("input", rendreListe);
+["#filtre-type", "#filtre-genre", "#filtre-duree", "#filtre-plateforme"].forEach(sel => $(sel).addEventListener("change", rendreListe));
+
+// Actions sur une ligne de titre (dans Ma liste ET sur l'accueil)
+function gererActionItem(e) {
+  const el = e.target.closest("[data-act]");
+  if (!el) return;
+  const li = el.closest(".item");
+  const t = li && etat.liste.find(x => x.id === li.dataset.id);
+  if (!t) return;
+  const act = el.dataset.act;
+  if (act === "statut") {
+    const cycle = ["a-voir", "en-cours", "fini"];
+    t.statut = cycle[(cycle.indexOf(t.statut) + 1) % cycle.length];
+  } else if (act === "note") {
+    const n = Number(el.dataset.note);
+    t.note = t.note === n ? 0 : n; // recliquer sur la même étoile enlève la note
+  } else if (act === "suppr") {
+    etat.liste = etat.liste.filter(x => x.id !== t.id);
+    toast(`« ${t.titre} » retiré`);
+  } else if (act === "ouvrir") {
+    noterOuverture(t.serviceId);
+    return; // le lien s'ouvre tout seul
+  }
+  sauvegarder();
+  rendreListe(); rendreAccueil();
+}
+$("#items-liste").addEventListener("click", gererActionItem);
+$("#en-cours-accueil").addEventListener("click", gererActionItem);
+
+/* =========================================================
+   8. « JE SAIS PAS QUOI REGARDER »
+   Deux modes : Découvrir (Claude propose) et Dans ma liste (pige au hasard).
+   ========================================================= */
+let modeHasard = "decouvrir";
+let tempsChoisi = null;
+let dernierPropose = null;
+let controleurClaude = null;   // pour pouvoir arrêter une demande en cours
+let suggestions = [];          // les cartes affichées
+let dejaProposes = [];         // titres déjà montrés dans cette fenêtre (pour « 3 autres idées »)
+
+// Définition des groupes de filtres (valeur "" = peu importe)
+const GROUPES = {
+  temps:    { label: "Temps", options: [["court", "Moins de 30 min"], ["moyen", "Environ 1 h"], ["long", "2 h et plus"]] },
+  type:     { label: "Type", options: [["", "Peu importe"], ["film", "Film"], ["serie", "Série"]] },
+  genres:   { label: "Genre", multi: true, options: GENRES.map(g => [g, majuscule(g)]) },
+  ambiance: { label: "Ambiance", options: [["leger", "Léger"], ["intense", "Intense"], ["reflechir", "Qui fait réfléchir"], ["rire", "À rire"], ["peur", "Qui fait peur"]] },
+  avecQui:  { label: "Avec qui", options: [["seul", "Seul"], ["deux", "À deux"], ["groupe", "En groupe"]] },
+  langue:   { label: "Langue", options: [["", "Peu importe"], ["fr", "Français"], ["en", "Anglais"]] }
+};
+// Textes envoyés à Claude pour chaque choix
+const TEXTES_PROMPT = {
+  temps: { court: "moins de 30 minutes", moyen: "environ 1 heure", long: "2 heures ou plus" },
+  type: { film: "un film", serie: "une série" },
+  ambiance: { leger: "léger, détente", intense: "intense, captivant", reflechir: "qui fait réfléchir", rire: "drôle, pour rire", peur: "qui fait peur" },
+  avecQui: { seul: "seul", deux: "à deux (en couple ou avec un ami)", groupe: "en groupe d'amis" },
+  langue: { fr: "en français (version originale française ou québécoise de préférence, sinon doublée)", en: "en anglais" }
+};
+
+function ouvrirHasard() {
+  if (!decouvrirPossible()) modeHasard = "liste"; // ni Claude ni TMDB : Découvrir ne peut pas marcher
+  tempsChoisi = null;
+  suggestions = [];
+  dejaProposes = [];
+  ouvrirModale(`
+    <h2>On regarde quoi ?</h2>
+    <div class="segment" role="group" aria-label="Mode" style="margin-top:14px">
+      <button data-mode="decouvrir">Découvrir</button>
+      <button data-mode="liste">Dans ma liste</button>
+    </div>
+    <div id="panneau-mode"></div>`, true);
+  rendrePanneau();
+}
+
+function rendrePanneau() {
+  if (!decouvrirPossible()) modeHasard = "liste";
+  document.querySelectorAll("[data-mode]").forEach(b => b.classList.toggle("actif", b.dataset.mode === modeHasard));
+  const seg = document.querySelector('.segment[aria-label="Mode"]');
+  if (seg) seg.hidden = !decouvrirPossible();
+  const p = $("#panneau-mode");
+  if (!p) return;
+  if (modeHasard === "liste") {
+    p.innerHTML = `
+      <p class="muet" style="margin-top:20px">Je pige un titre dans ta liste. Combien de temps as-tu ?</p>
+      <div class="choix-temps" style="margin-top:12px">
+        <button data-temps="court">Moins de 30 min</button>
+        <button data-temps="moyen">Environ 1 h</button>
+        <button data-temps="long">2 h et plus</button>
+      </div>
+      <div class="resultat" id="resultat-hasard"></div>`;
+    return;
+  }
+  const f = etat.filtresDecouvrir;
+  p.innerHTML = `
+    ${Object.keys(GROUPES).map(g => `<div class="chips-groupe" data-boite="${g}">${groupeHTML(g)}</div>`).join("")}
+    <div class="chips-groupe" data-boite="plateformes">${groupeHTML("plateformes")}</div>
+    <div class="zone-envie">
+      <input class="champ" id="envie" maxlength="200" placeholder="Une envie précise ? ex. « comme Interstellar mais plus court »" value="${esc(f.texte)}" aria-label="Envie précise (optionnel)">
+    </div>
+    <div class="rangee" style="margin-top:18px">
+      <button class="bouton-plein" data-action="chercher">Trouver 3 idées</button>
+      <button class="lien-discret" data-action="effacer-filtres">Effacer les filtres</button>
+    </div>
+    <div id="resultats-decouvrir">${suggestions.length ? cartesHTML() : ""}</div>`;
+}
+
+// HTML d'un groupe de pastilles
+function groupeHTML(g) {
+  const f = etat.filtresDecouvrir;
+  if (g === "plateformes") {
+    if (!etat.services.length) return "";
+    return `<div class="chips-label">Plateformes</div><div class="chips">` + etat.services.map(s => {
+      const actif = !f.plateformesExclues.includes(s.id);
+      return `<button class="chip${actif ? " actif" : ""}" data-groupe="plateformes" data-valeur="${esc(s.id)}" aria-pressed="${actif}">
+        <span class="point" style="--c:${esc(s.couleur)}"></span>${esc(s.nom)}</button>`;
+    }).join("") + `</div>`;
+  }
+  const def = GROUPES[g];
+  return `<div class="chips-label">${def.label}</div><div class="chips">` + def.options.map(([v, l]) => {
+    const actif = def.multi ? f[g].includes(v) : f[g] === v;
+    return `<button class="chip${actif ? " actif" : ""}" data-groupe="${g}" data-valeur="${v}" aria-pressed="${actif}">${l}</button>`;
+  }).join("") + `</div>`;
+}
+
+// Clic sur une pastille : on met à jour le filtre et on redessine seulement ce groupe
+function basculerFiltre(g, v) {
+  const f = etat.filtresDecouvrir;
+  if (g === "plateformes") {
+    f.plateformesExclues = f.plateformesExclues.includes(v)
+      ? f.plateformesExclues.filter(x => x !== v)
+      : [...f.plateformesExclues, v];
+  } else if (GROUPES[g].multi) {
+    f[g] = f[g].includes(v) ? f[g].filter(x => x !== v) : [...f[g], v];
+  } else {
+    // Recliquer sur un choix actif = « peu importe »
+    f[g] = f[g] === v ? "" : v;
+  }
+  sauvegarder();
+  const boite = document.querySelector(`[data-boite="${g}"]`);
+  if (boite) boite.innerHTML = groupeHTML(g);
+}
+
+// Construit la demande envoyée à Claude (il ne voit QUE ce texte)
+function construirePrompt() {
+  const f = etat.filtresDecouvrir;
+  let plateformes = etat.services.filter(s => !f.plateformesExclues.includes(s.id));
+  if (!plateformes.length) plateformes = etat.services;
+  const nomsPlateformes = plateformes.map(s => s.nom);
+
+  const criteres = [];
+  if (f.temps) criteres.push(`- Temps disponible : ${TEXTES_PROMPT.temps[f.temps]}. La durée d'un film entier, ou d'un épisode pour une série, doit entrer dans ce temps.`);
+  if (f.type) criteres.push(`- Type : ${TEXTES_PROMPT.type[f.type]}.`);
+  if (f.genres.length) criteres.push(`- Genres souhaités (au moins un) : ${f.genres.join(", ")}.`);
+  if (f.ambiance) criteres.push(`- Ambiance : ${TEXTES_PROMPT.ambiance[f.ambiance] || f.ambiance}.`);
+  if (f.avecQui) criteres.push(`- Pour regarder : ${TEXTES_PROMPT.avecQui[f.avecQui] || f.avecQui}.`);
+  if (f.langue) criteres.push(`- Langue : ${TEXTES_PROMPT.langue[f.langue]}.`);
+  if (f.texte) criteres.push(`- Envie précise de la personne : « ${f.texte} ».`);
+  if (!criteres.length) criteres.push("- Aucun critère : propose trois titres variés et bien reçus.");
+
+  // Ses goûts : titres bien notés (4 ou 5 étoiles), les plus récents d'abord
+  const aimes = etat.liste.filter(t => t.statut === "fini" && t.note >= 4)
+    .sort((a, b) => b.ajouteLe - a.ajouteLe).slice(0, 15)
+    .map(t => `${t.titre} (${t.note}/5)`);
+  const pasAimes = etat.liste.filter(t => t.statut === "fini" && t.note > 0 && t.note <= 2)
+    .slice(-10).map(t => t.titre);
+
+  // Titres à ne jamais proposer : déjà dans la liste, déjà vus, refusés, déjà montrés
+  const interdits = [...new Set([
+    ...etat.liste.map(t => t.titre),
+    ...etat.exclus,
+    ...dejaProposes
+  ])].slice(-250);
+
+  return `Tu aides une personne qui vit à Montréal (Canada) à choisir quoi regarder ce soir.
+Propose exactement 3 titres (films ou séries) qui existent vraiment. Varie-les : pas trois titres du même style ni de la même franchise.
+
+Critères :
+${criteres.join("\n")}
+
+Plateformes auxquelles la personne est abonnée : ${nomsPlateformes.join(", ")}.
+Choisis en priorité des titres probablement offerts sur l'une d'elles au Canada (c'est une estimation, la personne vérifiera).
+${aimes.length ? `\nTitres qu'elle a beaucoup aimés : ${aimes.join("; ")}. Inspire-toi de ses goûts.` : ""}${pasAimes.length ? `\nTitres qu'elle n'a pas aimés : ${pasAimes.join("; ")}.` : ""}
+${interdits.length ? `\nNe propose JAMAIS ces titres (déjà vus, déjà dans sa liste ou refusés) : ${interdits.join("; ")}.` : ""}
+
+Réponds uniquement avec un tableau JSON de 3 objets, sans aucun autre texte, au format :
+[{"titre":"titre utilisé au Québec si connu, sinon le titre original","annee":2014,"type":"film","duree":169,"genres":["science-fiction","drame"],"pourquoi":"une phrase en français simple, en tutoyant, qui explique pourquoi ça lui correspond","plateforme":"Netflix"}]
+Règles du format :
+- "type" vaut "film" ou "série".
+- "duree" = durée en minutes du film, ou d'un épisode pour une série.
+- "genres" : 1 à 3 genres choisis seulement parmi : ${GENRES.join(", ")}.
+- "plateforme" : le nom exact d'une de ces plateformes : ${nomsPlateformes.join(", ")}. Écris "Autre" si le titre n'est probablement sur aucune d'elles.`;
+}
+
+// Nettoie la réponse de Claude (on ne fait jamais confiance aveuglément à des données reçues)
+function nettoyerSuggestions(brut) {
+  let tableau = brut;
+  if (!Array.isArray(tableau) && tableau && typeof tableau === "object") {
+    tableau = Object.values(tableau).find(Array.isArray) || [];
+  }
+  if (!Array.isArray(tableau)) return [];
+  return tableau
+    .filter(x => x && typeof x.titre === "string" && x.titre.trim())
+    .map(x => {
+      const type = sansAccents(x.type).startsWith("serie") ? "serie" : sansAccents(x.type) === "film" ? "film" : "";
+      return {
+        id: uid(),
+        titre: x.titre.trim().slice(0, 120),
+        annee: Number(x.annee) >= 1900 && Number(x.annee) <= 2100 ? Math.round(Number(x.annee)) : null,
+        type,
+        duree: Math.max(0, Math.min(900, Math.round(Number(x.duree) || 0))),
+        genres: Array.isArray(x.genres) ? x.genres.map(g => sansAccents(g)).map(g => GENRES.find(G => sansAccents(G) === g)).filter(Boolean).slice(0, 3) : [],
+        pourquoi: texteCourt(x.pourquoi, 300),
+        plateformeTexte: texteCourt(x.plateforme, 40),
+        serviceId: (serviceParNom(x.plateforme) || {}).id || "",
+        etat: ""   // "" | "ajoute" | "vu" | "parti"
+      };
+    })
+    .filter(x => !titreConnu(x.titre))
+    .slice(0, 3);
+}
+
+async function chercherIdees() {
+  const zone = $("#resultats-decouvrir");
+  if (!zone) return;
+  const champ = $("#envie");
+  if (champ) { etat.filtresDecouvrir.texte = texteCourt(champ.value, 200); sauvegarder(); }
+
+  const sample = await promesseClaude;
+  if (!sample) {
+    // Hors de Claude : on passe par TMDB si une clé est enregistrée
+    if (etat.tmdbCle || await promesseServeur) return chercherIdeesTMDB(zone);
+    zone.innerHTML = messageRepli("Le mode Découvrir n'est pas activé sur ce site pour l'instant. Tu peux quand même piger dans ta liste.");
+    return;
+  }
+  if (controleurClaude) controleurClaude.abort();
+  controleurClaude = new AbortController();
+  const ctl = controleurClaude;
+  document.querySelectorAll('[data-action="chercher"], [data-action="autres"]').forEach(b => b.disabled = true);
+  zone.innerHTML = `
+    <div class="chargement">
+      <span class="points"><span></span><span></span><span></span></span>
+      <span>Je cherche des idées pour toi… (ça peut prendre quelques secondes)</span>
+      <button class="lien-discret" data-action="stop">Arrêter</button>
+    </div>`;
+  zone.scrollIntoView({ behavior: "smooth", block: "nearest" });
+  try {
+    const brut = await sample.json(construirePrompt(), { signal: ctl.signal, cache: false });
+    if (ctl !== controleurClaude) return;
+    const nouvelles = nettoyerSuggestions(brut);
+    if (!nouvelles.length) {
+      zone.innerHTML = messageRepli("Je n'ai pas trouvé de nouvelle idée avec ces filtres. Essaie d'en enlever un.");
+      return;
+    }
+    suggestions = nouvelles;
+    dejaProposes.push(...nouvelles.map(s => s.titre));
+    zone.innerHTML = cartesHTML();
+    // Fait défiler la fenêtre jusqu'aux idées
+    zone.scrollIntoView({ behavior: "smooth", block: "start" });
+  } catch (e) {
+    if (ctl !== controleurClaude) return;
+    const code = e && e.code;
+    if (code === "cancelled") { zone.innerHTML = suggestions.length ? cartesHTML() : ""; return; }
+    const messages = {
+      not_granted: "Tu n'as pas autorisé l'app à demander à Claude. Les suggestions sont désactivées pour cette fois.",
+      sampling_disabled: "Claude n'est pas disponible pour ce compte.",
+      rate_limited: "Trop de demandes d'un coup. Attends un peu avant de réessayer.",
+      session_expired: "Ta session Claude a expiré. Reconnecte-toi puis réessaie.",
+      invalid_json: "La réponse de Claude était mal formée. Clique sur « Trouver 3 idées » pour réessayer.",
+      refused: "Claude n'a pas voulu répondre à cette demande. Change ton envie précise et réessaie."
+    };
+    zone.innerHTML = messageRepli(messages[code] || "Ça n'a pas marché cette fois (problème de connexion?). Tu peux réessayer.");
+  } finally {
+    if (ctl === controleurClaude) {
+      controleurClaude = null;
+      document.querySelectorAll('[data-action="chercher"], [data-action="autres"]').forEach(b => b.disabled = false);
+    }
+  }
+}
+
+/* ---------- Moteur TMDB (hors de Claude) ----------
+   Utilise la recherche « Discover » de TMDB avec la disponibilité réelle
+   au Canada (données JustWatch). Rien n'est envoyé ailleurs qu'à TMDB. */
+const API_TMDB = "https://api.themoviedb.org/3";
+const IMG_TMDB = "https://image.tmdb.org/t/p/w185";
+// Nos genres -> numéros de genres TMDB (les séries ont parfois des genres différents)
+const GENRES_TMDB = {
+  movie: { "action": 28, "comédie": 35, "drame": 18, "horreur": 27, "thriller": 53, "science-fiction": 878, "animation": 16, "documentaire": 99, "romance": 10749, "policier": 80 },
+  tv:    { "action": 10759, "comédie": 35, "drame": 18, "horreur": 9648, "thriller": 9648, "science-fiction": 10765, "animation": 16, "documentaire": 99, "romance": 18, "policier": 80 }
+};
+// Numéro TMDB -> notre genre (pour afficher les genres d'un titre)
+const GENRE_DEPUIS_TMDB = { 28: "action", 12: "action", 10759: "action", 35: "comédie", 18: "drame", 27: "horreur", 53: "thriller", 9648: "thriller", 878: "science-fiction", 10765: "science-fiction", 14: "science-fiction", 16: "animation", 99: "documentaire", 10749: "romance", 80: "policier" };
+// L'ambiance choisie devient des genres quand aucun genre n'est coché
+const GENRES_AMBIANCE = { leger: ["comédie", "animation", "romance"], intense: ["action", "thriller"], reflechir: ["drame", "documentaire", "science-fiction"], rire: ["comédie"], peur: ["horreur", "thriller"] };
+
+let ctlTmdb = null;
+let fournisseursCA = null; // liste des plateformes connues de TMDB au Canada (gardée en mémoire)
+
+// Un appel à l'API TMDB. Jeton (eyJ...) dans l'en-tête si possible, sinon clé API classique.
+async function appelTmdb(chemin, params = {}) {
+  const cle = (etat.tmdbCle || "").trim();
+  const entetes = { accept: "application/json" };
+  let url;
+  if (cle) {
+    // Une clé perso est enregistrée dans ce navigateur : on appelle TMDB directement
+    url = new URL(API_TMDB + chemin);
+    if (cle.startsWith("eyJ")) entetes.Authorization = "Bearer " + cle;
+    else url.searchParams.set("api_key", cle);
+  } else {
+    // Sinon on passe par le serveur Watchall, qui ajoute la clé cachée
+    url = new URL(SERVEUR_TMDB, location.href);
+    url.searchParams.set("chemin", chemin);
+  }
+  Object.entries(params).forEach(([k, v]) => { if (v !== "" && v !== null && v !== undefined) url.searchParams.set(k, v); });
+  let r;
+  try { r = await fetch(url, { headers: entetes, signal: ctlTmdb ? ctlTmdb.signal : undefined }); }
+  catch (e) { throw { code: e && e.name === "AbortError" ? "cancelled" : "reseau" }; }
+  if (r.status === 401) throw { code: "cle_invalide" };
+  if (r.status === 503 && !cle) throw { code: "serveur_sans_cle" };
+  if (r.status === 429) throw { code: "rate_limited" };
+  if (!r.ok) throw { code: "upstream_error" };
+  return r.json();
+}
+
+// « Disney+ » et « Disney Plus » doivent correspondre
+const nomCompact = s => sansAccents(s).replace(/\+/g, "plus").replace(/[^a-z0-9]/g, "");
+function memePlateforme(nomTmdb, nomService) {
+  const a = nomCompact(nomTmdb), b = nomCompact(nomService);
+  return !!a && !!b && (a === b || a.includes(b) || b.includes(a));
+}
+
+async function chargerFournisseurs() {
+  if (fournisseursCA) return fournisseursCA;
+  const [films, series] = await Promise.all([
+    appelTmdb("/watch/providers/movie", { watch_region: "CA", language: "fr-CA" }),
+    appelTmdb("/watch/providers/tv", { watch_region: "CA", language: "fr-CA" })
+  ]);
+  fournisseursCA = [...(films.results || []), ...(series.results || [])];
+  return fournisseursCA;
+}
+
+// Durée voulue -> bornes de durée TMDB (un épisode pour une série)
+function bornesDuree(temps, type) {
+  if (temps === "court") return { "with_runtime.lte": 30 };
+  if (temps === "moyen") return type === "tv" ? { "with_runtime.gte": 31, "with_runtime.lte": 75 } : { "with_runtime.lte": 80 };
+  if (temps === "long") return type === "movie" ? { "with_runtime.gte": 90 } : {};
+  return {};
+}
+
+// Point de départ pour « des titres comme… » : l'envie précise, sinon un titre que tu as adoré
+async function trouverGraine(texte) {
+  if (texte) {
+    const m = texte.match(/comme\s+(.+?)(?:\s+mais\b|\s+en\s|,|$)/i);
+    const requete = (m ? m[1] : texte).trim();
+    const res = await appelTmdb("/search/multi", { query: requete, language: "fr-CA", include_adult: false });
+    const trouve = (res.results || []).find(r => r.media_type === "movie" || r.media_type === "tv");
+    return trouve ? { type: trouve.media_type, id: trouve.id, depuisTexte: true } : null;
+  }
+  const adores = etat.liste.filter(t => t.statut === "fini" && t.note >= 4 && t.tmdbId && t.media);
+  if (adores.length && Math.random() < 0.5) {
+    const t = adores[Math.floor(Math.random() * adores.length)];
+    return { type: t.media, id: t.tmdbId, depuisTexte: false };
+  }
+  return null;
+}
+
+function melanger(tab) {
+  for (let i = tab.length - 1; i > 0; i--) { const j = Math.floor(Math.random() * (i + 1)); [tab[i], tab[j]] = [tab[j], tab[i]]; }
+  return tab;
+}
+
+async function decouvrirTmdb() {
+  const f = etat.filtresDecouvrir;
+  let services = etat.services.filter(s => !f.plateformesExclues.includes(s.id));
+  if (!services.length) services = etat.services;
+
+  // Mes services -> numéros de plateformes TMDB au Canada
+  const fournisseurs = await chargerFournisseurs();
+  const serviceDuFournisseur = new Map();
+  services.forEach(s => fournisseurs.forEach(p => {
+    if (memePlateforme(p.provider_name, s.nom) && !serviceDuFournisseur.has(p.provider_id)) serviceDuFournisseur.set(p.provider_id, s.id);
+  }));
+  if (!serviceDuFournisseur.size) throw { code: "aucune_plateforme" };
+  const ids = [...serviceDuFournisseur.keys()];
+
+  const types = f.type === "film" ? ["movie"] : f.type === "serie" ? ["tv"] : ["movie", "tv"];
+  const nomsGenres = f.genres.length ? f.genres : (GENRES_AMBIANCE[f.ambiance] || []);
+  let candidats = [];
+  let avertissement = "";
+
+  const graine = await trouverGraine(f.texte);
+  if (graine && types.includes(graine.type)) {
+    // « Comme ce titre » : recommandations TMDB (disponibilité vérifiée plus bas)
+    const rec = await appelTmdb(`/${graine.type}/${graine.id}/recommendations`, { language: "fr-CA" });
+    candidats = (rec.results || []).map(r => ({ ...r, media: graine.type }));
+  } else if (f.texte) {
+    avertissement = "Je n'ai pas reconnu de titre dans ton envie, voici des idées selon tes filtres.";
+  }
+  if (!candidats.length) {
+    for (const type of types) {
+      const params = {
+        watch_region: "CA", with_watch_providers: ids.join("|"), with_watch_monetization_types: "flatrate",
+        language: "fr-CA", sort_by: "popularity.desc", include_adult: false,
+        "vote_count.gte": type === "movie" ? 100 : 50, ...bornesDuree(f.temps, type)
+      };
+      const genres = [...new Set(nomsGenres.map(n => GENRES_TMDB[type][n]).filter(Boolean))];
+      if (genres.length) params.with_genres = genres.join("|");
+      if (f.langue) params.with_original_language = f.langue;
+      const page1 = await appelTmdb(`/discover/${type}`, { ...params, page: 1 });
+      let res = page1.results || [];
+      const pages = Math.min(page1.total_pages || 1, 8);
+      if (pages > 1) {
+        const autre = await appelTmdb(`/discover/${type}`, { ...params, page: 2 + Math.floor(Math.random() * (pages - 1)) });
+        res = res.concat(autre.results || []);
+      }
+      candidats.push(...res.map(r => ({ ...r, media: type })));
+    }
+  }
+
+  // On enlève ce que tu connais déjà ou qu'on vient de te montrer
+  const vus = new Set(dejaProposes.map(sansAccents));
+  candidats = melanger(candidats.filter(c => {
+    const t = c.title || c.name || "";
+    return t && !titreConnu(t) && !vus.has(sansAccents(t));
+  }));
+
+  // Détails + disponibilité réelle au Canada, jusqu'à avoir 3 titres sur tes plateformes
+  const resultats = [];
+  for (const c of candidats.slice(0, 12)) {
+    if (resultats.length >= 3) break;
+    const d = await appelTmdb(`/${c.media}/${c.id}`, { language: "fr-CA", append_to_response: "watch/providers" });
+    const offres = (((d["watch/providers"] || {}).results || {}).CA || {}).flatrate || [];
+    const offre = offres.find(o => serviceDuFournisseur.has(o.provider_id));
+    if (!offre) continue;
+    const duree = c.media === "movie" ? (d.runtime || 0) : ((d.episode_run_time || [])[0] || (d.last_episode_to_air || {}).runtime || 0);
+    const date = d.release_date || d.first_air_date || "";
+    const affiche = typeof d.poster_path === "string" && /^\/[\w.-]+$/.test(d.poster_path) ? IMG_TMDB + d.poster_path : "";
+    const resume = texteCourt(d.overview || "", 400);
+    resultats.push({
+      id: uid(),
+      titre: texteCourt(d.title || d.name || "", 120),
+      annee: /^\d{4}/.test(date) ? Number(date.slice(0, 4)) : null,
+      type: c.media === "movie" ? "film" : "serie",
+      duree: Math.max(0, Math.round(Number(duree) || 0)),
+      genres: [...new Set((d.genres || []).map(g => GENRE_DEPUIS_TMDB[g.id]).filter(Boolean))].slice(0, 3),
+      pourquoi: "",
+      resume: resume.length > 220 ? resume.slice(0, 217).trim() + "…" : resume,
+      noteTmdb: Number(d.vote_average) || 0,
+      affiche,
+      plateformeTexte: offre.provider_name,
+      serviceId: serviceDuFournisseur.get(offre.provider_id),
+      tmdbId: d.id, media: c.media,
+      verifie: true,
+      etat: ""
+    });
+  }
+  return { resultats, avertissement };
+}
+
+async function chercherIdeesTMDB(zone) {
+  if (ctlTmdb) ctlTmdb.abort();
+  ctlTmdb = new AbortController();
+  const ctl = ctlTmdb;
+  document.querySelectorAll('[data-action="chercher"], [data-action="autres"]').forEach(b => b.disabled = true);
+  zone.innerHTML = `
+    <div class="chargement">
+      <span class="points"><span></span><span></span><span></span></span>
+      <span>Je cherche des idées sur tes plateformes…</span>
+      <button class="lien-discret" data-action="stop">Arrêter</button>
+    </div>`;
+  zone.scrollIntoView({ behavior: "smooth", block: "nearest" });
+  try {
+    const { resultats, avertissement } = await decouvrirTmdb();
+    if (ctl !== ctlTmdb) return;
+    if (!resultats.length) {
+      zone.innerHTML = messageRepli("Je n'ai rien trouvé de nouveau sur tes plateformes avec ces filtres. Essaie d'en enlever un.");
+      return;
+    }
+    suggestions = resultats;
+    dejaProposes.push(...resultats.map(s => s.titre));
+    zone.innerHTML = (avertissement ? `<p class="muet" style="margin:20px 0 0;font-size:14px">${esc(avertissement)}</p>` : "") + cartesHTML();
+    zone.scrollIntoView({ behavior: "smooth", block: "start" });
+  } catch (e) {
+    if (ctl !== ctlTmdb) return;
+    const code = e && e.code;
+    if (code === "cancelled") { zone.innerHTML = suggestions.length ? cartesHTML() : ""; return; }
+    const messages = {
+      cle_invalide: etat.tmdbCle
+        ? "Ta clé TMDB ne marche pas. Vérifie-la dans Paramètres (bouton « Tester la clé »)."
+        : "Le mode Découvrir a un problème de connexion à TMDB. Réessaie plus tard.",
+      serveur_sans_cle: "Le mode Découvrir n'est pas encore activé sur ce site. Réessaie plus tard.",
+      rate_limited: "Trop de recherches d'un coup. Attends quelques secondes et réessaie.",
+      reseau: "Impossible de joindre TMDB. Vérifie ta connexion internet.",
+      aucune_plateforme: "Je ne reconnais pas tes plateformes dans les données canadiennes de TMDB. Vérifie leurs noms dans Paramètres (ex. « Netflix », « Crave »)."
+    };
+    zone.innerHTML = messageRepli(messages[code] || "TMDB n'a pas répondu correctement. Réessaie dans un moment.");
+  } finally {
+    if (ctl === ctlTmdb) {
+      ctlTmdb = null;
+      document.querySelectorAll('[data-action="chercher"], [data-action="autres"]').forEach(b => b.disabled = false);
+    }
+  }
+}
+
+// Message d'erreur doux + solution de repli : piger dans ma liste
+function messageRepli(texte) {
+  return `<div class="message-doux">${esc(texte)}
+    <div class="rangee"><button class="bouton-contour bouton-petit" data-action="mode-liste">Piger dans ma liste à la place</button></div></div>`;
+}
+
+// Les cartes de suggestions
+function cartesHTML() {
+  const visibles = suggestions.filter(s => s.etat !== "parti");
+  const cartes = visibles.map(s => {
+    const serv = serviceParId(s.serviceId);
+    const plateforme = s.verifie
+      ? `<span class="point" style="--c:${serv ? esc(serv.couleur) : "var(--pale)"}"></span>Sur ${esc(serv ? serv.nom : s.plateformeTexte)} au Canada${s.noteTmdb ? ` · ★ ${s.noteTmdb.toFixed(1).replace(".", ",")} sur TMDB` : ""}`
+      : serv
+      ? `<span class="point" style="--c:${esc(serv.couleur)}"></span>Probablement sur ${esc(serv.nom)} · disponibilité à vérifier`
+      : `<span class="point"></span>${s.plateformeTexte && sansAccents(s.plateformeTexte) !== "autre" ? "Probablement sur " + esc(s.plateformeTexte) + " (pas dans tes services)" : "Pas sur tes plateformes, selon Claude"} · à vérifier`;
+    const meta = [s.annee, TYPES[s.type], fmtDuree(s.duree) + (s.type === "serie" && s.duree ? " / épisode" : ""), s.genres.map(majuscule).join(", ")].filter(Boolean).join(" · ");
+    let actions;
+    if (s.etat === "vu") {
+      const t = etat.liste.find(x => x.id === s.listeId);
+      actions = `<span class="muet" style="font-size:14px">Ajouté à Déjà vu. Ta note :</span> ${etoilesHTML(t ? t.note : 0, "note-suggestion")}`;
+    } else {
+      actions = `
+        ${serv && serv.url ? `<a class="bouton-plein bouton-petit" href="${esc(serv.url)}" target="_blank" rel="noopener noreferrer" data-ouvrir-service="${esc(serv.id)}">Ouvrir ${esc(serv.nom)} ↗</a>` : ""}
+        <button class="bouton-contour bouton-petit" data-sugg="ajouter" ${s.etat === "ajoute" ? "disabled" : ""}>${s.etat === "ajoute" ? "Dans ta liste ✓" : "Ajouter à ma liste"}</button>
+        ${s.etat === "ajoute" ? "" : `<button class="bouton-contour bouton-petit" data-sugg="vu">Déjà vu</button>
+        <button class="lien-discret" data-sugg="non">Pas pour moi</button>`}`;
+    }
+    return `
+      <div class="carte-suggestion${s.etat === "vu" ? " vue-deja" : ""}" data-sugg-id="${s.id}">
+        <div class="cs-corps">
+          ${s.affiche ? `<img class="cs-affiche" src="${esc(s.affiche)}" alt="" loading="lazy" onerror="this.style.visibility='hidden'">` : ""}
+          <div class="cs-texte">
+            <div class="cs-plateforme">${plateforme}</div>
+            <div class="cs-titre">${esc(s.titre)}</div>
+            <div class="cs-meta">${esc(meta)}</div>
+            ${s.pourquoi ? `<p class="cs-pourquoi">${esc(s.pourquoi)}</p>` : ""}
+            ${s.resume ? `<p class="cs-resume">${esc(s.resume)}</p>` : ""}
+          </div>
+        </div>
+        <div class="cs-actions">${actions}</div>
+      </div>`;
+  }).join("");
+  const tmdb = suggestions.some(s => s.verifie);
+  return `<div style="margin-top:24px">${cartes}</div>
+    <div class="rangee" style="margin-top:16px"><button class="bouton-contour" data-action="autres">3 autres idées</button></div>
+    ${tmdb ? `<p class="source-donnees">Données : <a href="https://www.themoviedb.org" target="_blank" rel="noopener noreferrer">TMDB</a> · Disponibilités : <a href="https://www.justwatch.com/ca" target="_blank" rel="noopener noreferrer">JustWatch</a></p>` : ""}`;
+}
+
+// Transforme une suggestion en titre de ma liste
+function suggestionVersListe(s, statut) {
+  const t = {
+    id: uid(), titre: s.titre, serviceId: s.serviceId, statut,
+    duree: s.duree, type: s.type, genres: s.genres, annee: s.annee, note: 0, ajouteLe: Date.now(),
+    tmdbId: s.tmdbId || null, media: s.media || null
+  };
+  etat.liste.push(t);
+  return t;
+}
+
+function actionSuggestion(e) {
+  const b = e.target.closest("[data-sugg], [data-act='note-suggestion']");
+  if (!b) return false;
+  const carte = b.closest("[data-sugg-id]");
+  const s = carte && suggestions.find(x => x.id === carte.dataset.suggId);
+  if (!s) return true;
+  if (b.dataset.act === "note-suggestion") {
+    const t = etat.liste.find(x => x.id === s.listeId);
+    if (t) { const n = Number(b.dataset.note); t.note = t.note === n ? 0 : n; }
+  } else if (b.dataset.sugg === "ajouter") {
+    suggestionVersListe(s, "a-voir");
+    s.etat = "ajoute";
+    toast(`« ${s.titre} » ajouté à ta liste`);
+  } else if (b.dataset.sugg === "vu") {
+    s.listeId = suggestionVersListe(s, "fini").id;
+    s.etat = "vu";
+  } else if (b.dataset.sugg === "non") {
+    etat.exclus.push(s.titre);
+    s.etat = "parti";
+    carte.classList.add("part");
+    sauvegarder();
+    rendreParametres();
+    setTimeout(() => { const z = $("#resultats-decouvrir"); if (z) z.innerHTML = cartesHTML(); }, 320);
+    return true;
+  }
+  sauvegarder();
+  rendreListe(); rendreAccueil();
+  const z = $("#resultats-decouvrir");
+  if (z) z.innerHTML = cartesHTML();
+  return true;
+}
+
+/* --- Mode « Dans ma liste » (le fonctionnement de la v1) ---
+   - moins de 30 min : seulement les titres de 30 min ou moins
+   - environ 1 h     : d'abord les titres de 31 à 75 min, sinon les plus courts
+   - 2 h et plus     : d'abord les longs (plus de 75 min), sinon n'importe quoi
+   Les titres « en cours » ont deux fois plus de chances de sortir. */
+function proposer(temps) {
+  const candidats = etat.liste.filter(t => t.statut !== "fini");
+  const regles = {
+    court: { ideal: d => d > 0 && d <= 30, repli: () => false },
+    moyen: { ideal: d => d > 30 && d <= 75, repli: d => d > 0 && d <= 30 },
+    long:  { ideal: d => d > 75, repli: () => true }
+  }[temps];
+  let pool = candidats.filter(t => regles.ideal(t.duree));
+  if (!pool.length) pool = candidats.filter(t => regles.repli(t.duree));
+  if (!pool.length) return null;
+  let tirage = pool.flatMap(t => t.statut === "en-cours" ? [t, t] : [t]);
+  if (pool.length > 1) tirage = tirage.filter(t => t.id !== dernierPropose);
+  const choisi = tirage[Math.floor(Math.random() * tirage.length)];
+  dernierPropose = choisi.id;
+  return choisi;
+}
+
+function afficherProposition() {
+  const zone = $("#resultat-hasard");
+  if (!zone || !tempsChoisi) return;
+  const t = proposer(tempsChoisi);
+  if (!t) {
+    const vide = !etat.liste.some(t => t.statut !== "vu");
+    zone.innerHTML = decouvrirPossible()
+      ? `<div class="vide">Rien dans ta liste pour ce temps-là.
+          <button data-action="mode-decouvrir">Voir des idées avec Découvrir</button>.</div>`
+      : `<div class="vide">${vide ? "Ta liste est vide pour l'instant." : "Rien dans ta liste pour ce temps-là."}
+          <button data-action="aller-liste">Ajouter des titres dans Ma liste</button></div>`;
+    return;
+  }
+  const s = serviceParId(t.serviceId);
+  const details = [s ? "Sur " + s.nom : "Plateforme retirée", fmtDuree(t.duree), STATUTS[t.statut]].filter(Boolean).join(" · ");
+  zone.innerHTML = `
+    <div class="resultat-carte">
+      <span class="point" style="--c:${s ? esc(s.couleur) : "var(--pale)"}"></span>
+      <div class="resultat-titre">${esc(t.titre)}</div>
+      <div class="muet" style="font-size:14px">${esc(details)}</div>
+      <div class="rangee" style="margin-top:20px">
+        ${s && s.url ? `<a class="bouton-plein" href="${esc(s.url)}" target="_blank" rel="noopener noreferrer" data-ouvrir-service="${esc(s.id)}">Ouvrir ${esc(s.nom)} ↗</a>` : ""}
+        <button class="bouton-contour" data-action="relancer">Autre idée</button>
+      </div>
+    </div>`;
+}
+
+/* =========================================================
+   9. AIDE : LES RACCOURCIS CLAVIER
+   ========================================================= */
+function ouvrirAide() {
+  const services = etat.services.slice(0, 9).map((s, i) =>
+    `<li><span>Ouvrir ${esc(s.nom)}</span><span><kbd>${i + 1}</kbd></span></li>`).join("");
+  ouvrirModale(`
+    <h2>Raccourcis</h2>
+    <ul class="raccourcis">
+      ${services}
+      <li><span>Recherche rapide</span><span><kbd>Ctrl K</kbd> ou <kbd>/</kbd></span></li>
+      <li><span>Je sais pas quoi regarder</span><span><kbd>R</kbd></span></li>
+      <li><span>Accueil</span><span><kbd>A</kbd></span></li>
+      <li><span>Ma liste</span><span><kbd>L</kbd></span></li>
+      <li><span>Abonnements</span><span><kbd>B</kbd></span></li>
+      <li><span>Paramètres</span><span><kbd>P</kbd></span></li>
+      <li><span>Changer de thème</span><span><kbd>T</kbd></span></li>
+      <li><span>Cette aide</span><span><kbd>?</kbd></span></li>
+      <li><span>Fermer une fenêtre ou un message</span><span><kbd>Échap</kbd></span></li>
+    </ul>`);
+}
+
+/* =========================================================
+   10. ABONNEMENTS
+   ========================================================= */
+function rendreAbonnements() {
+  const total = etat.services.reduce((somme, s) => somme + (s.prix || 0), 0);
+  $("#total-mois").textContent = fmtArgent.format(total);
+  $("#total-annee").textContent = fmtArgent.format(total * 12);
+
+  // Tri par prochaine date de renouvellement (ceux sans date à la fin)
+  const lignes = etat.services.map(s => ({ s, prochain: prochainRenouvellement(s.renouvellement) }))
+    .sort((a, b) => (a.prochain ? a.prochain.getTime() : Infinity) - (b.prochain ? b.prochain.getTime() : Infinity));
+
+  $("#liste-abos").innerHTML = lignes.length ? lignes.map(({ s, prochain }) => {
+    let renouv = "Date de renouvellement à entrer dans Paramètres";
+    if (prochain) {
+      const dans = Math.round((prochain - debutAujourdhui()) / JOUR);
+      const quand = dans === 0 ? "aujourd'hui" : dans === 1 ? "demain" : `dans ${dans} jours`;
+      renouv = `Renouvellement le ${fmtJourMois.format(prochain)} · ${quand}`;
+    }
+    const ouvert = s.derniereOuverture ? "Ouvert " + ilYa(s.derniereOuverture) : "Jamais ouvert depuis l'ajout";
+    const jours = joursSansOuverture(s);
+    const avert = jours > 30
+      ? `<div class="avert-doux"><span>●</span><span>Pas ouvert depuis ${jours} jours. ${s.prix > 0 ? `Ça te coûte ${fmtArgent.format(s.prix)} par mois : est-ce que ça vaut encore la peine?` : "Est-ce que tu l'utilises encore?"}</span></div>`
+      : "";
+    return `
+      <li class="abo">
+        <span class="point" style="--c:${esc(s.couleur)}"></span>
+        <div class="abo-corps">
+          <div class="abo-ligne">
+            <span class="abo-nom">${esc(s.nom)}</span>
+            <span class="abo-prix">${s.prix > 0 ? fmtArgent.format(s.prix) + " / mois" : '<span class="muet">Prix à entrer</span>'}</span>
+          </div>
+          <div class="abo-details">${esc(renouv)} · ${esc(ouvert)}</div>
+          ${avert}
+        </div>
+      </li>`;
+  }).join("") : `<li class="vide">Aucun service.</li>`;
+
+  const sansPrix = etat.services.filter(s => !s.prix).length;
+  $("#note-abos").textContent = sansPrix
+    ? `${sansPrix} service${sansPrix > 1 ? "s n'ont" : " n'a"} pas encore de prix. Entre-les dans Paramètres pour un total exact (taxes incluses si tu veux le vrai montant payé).`
+    : "Montants en dollars canadiens. Le renouvellement est calculé chaque mois à partir de la date entrée.";
+}
+
+/* =========================================================
+   11. PARAMÈTRES
+   ========================================================= */
+function rendreParametres() {
+  document.querySelectorAll("[data-theme-choix]").forEach(b =>
+    b.classList.toggle("actif", b.dataset.themeChoix === etat.theme));
+  $("#tmdb-cle").value = etat.tmdbCle || "";
+  if (etat.tmdbCle) $("#bloc-tmdb").open = true; // déjà une clé : on montre le bloc ouvert
+  $("#note-serveur").hidden = serveurTmdb !== true;
+  const n = etat.exclus.length;
+  $("#texte-exclus").textContent = n
+    ? `Titres masqués avec « Pas pour moi » : ${n}. Ils ne te seront plus proposés.`
+    : "Aucun titre masqué avec « Pas pour moi ».";
+  $("#btn-exclus").hidden = !n;
+
+  $("#editeur-services").innerHTML = etat.services.map((s, i) => `
+    <div class="ligne-service" data-id="${esc(s.id)}">
+      <div class="ls-tete">
+        <span class="ls-num" title="Raccourci clavier">${i < 9 ? i + 1 : ""}</span>
+        <input type="color" data-champ="couleur" value="${esc(s.couleur)}" aria-label="Couleur d'accent de ${esc(s.nom)}">
+        <input class="ls-nom" data-champ="nom" value="${esc(s.nom)}" maxlength="40" aria-label="Nom du service">
+        <div class="ls-boutons">
+          <button class="icone" data-act="haut" aria-label="Monter" ${i === 0 ? "disabled" : ""}>↑</button>
+          <button class="icone" data-act="bas" aria-label="Descendre" ${i === etat.services.length - 1 ? "disabled" : ""}>↓</button>
+          <button class="btn-retirer" data-act="retirer">Retirer</button>
+        </div>
+      </div>
+      <div class="ls-champs">
+        <label>Lien<input class="champ" data-champ="url" type="url" value="${esc(s.url)}" placeholder="https://…"></label>
+        <label>Prix mensuel ($ CA)<input class="champ" data-champ="prix" type="number" min="0" step="0.01" value="${s.prix || ""}" placeholder="0,00"></label>
+        <label>Renouvellement<input class="champ" data-champ="renouvellement" type="date" value="${esc(s.renouvellement)}"></label>
+      </div>
+      <div class="ls-image">
+        <span class="apercu-image">${s.image ? `<img src="${s.image}" alt="Image de ${esc(s.nom)}">` : "Aucune"}</span>
+        <button class="bouton-contour bouton-petit" data-act="image">${s.image ? "Changer l'image" : "Ajouter une image"}</button>
+        ${s.image ? `
+          <span class="segment segment-petit" role="group" aria-label="Affichage de l'image">
+            <button data-act="ajustement" data-valeur="auto" class="${s.ajustement === "auto" ? "actif" : ""}" title="L'app choisit le meilleur cadrage">Automatique</button>
+            <button data-act="ajustement" data-valeur="remplir" class="${s.ajustement === "remplir" ? "actif" : ""}">Remplir la case</button>
+            <button data-act="ajustement" data-valeur="entiere" class="${s.ajustement === "entiere" ? "actif" : ""}">Image entière</button>
+          </span>
+          <button class="bouton-contour bouton-petit" data-act="recadrer" aria-expanded="${recadrageOuvert.has(s.id)}">${recadrageOuvert.has(s.id) ? "Fermer le recadrage" : "Recadrer"}</button>
+          <button class="btn-retirer" data-act="retirer-image">Retirer l'image</button>` : ""}
+      </div>
+      ${s.image && recadrageOuvert.has(s.id) ? recadrageHTML(s) : ""}
+    </div>`).join("") || `<div class="vide" style="margin-bottom:12px">Aucun service.</div>`;
+  cadrerTout(); // l'aperçu du recadrage suit le même cadrage que l'accueil
+}
+
+// Panneaux de recadrage ouverts (gardés quand la page se redessine)
+const recadrageOuvert = new Set();
+
+// Aperçu en direct (même rendu que la vraie tuile) + 3 curseurs
+function recadrageHTML(s) {
+  return `
+    <div class="recadrage">
+      <div class="tuile avec-image${s.ajustement === "entiere" ? " entiere" : ""}" data-id="${esc(s.id)}" style="--c:${esc(s.couleur)}" aria-hidden="true">
+        <span class="tuile-fond"><img src="${s.image}" alt="" style="${styleImage(s)}"></span>
+        <span class="tuile-pied"><span class="trait"></span><span class="tuile-meta">${esc(s.nom)}</span></span>
+      </div>
+      <div class="reglages">
+        <label>Zoom<input type="range" data-recad="zoom" min="1" max="3" step="0.05" value="${s.zoom}"><output>${Math.round(s.zoom * 100)} %</output></label>
+        <label>Gauche ↔ droite<input type="range" data-recad="posX" min="0" max="100" step="1" value="${s.posX}"><output>${Math.round(s.posX)}</output></label>
+        <label>Haut ↕ bas<input type="range" data-recad="posY" min="0" max="100" step="1" value="${s.posY}"><output>${Math.round(s.posY)}</output></label>
+        <div><button class="lien-discret" data-act="recadrage-zero">Remettre au centre</button></div>
+      </div>
+    </div>`;
+}
+
+// Pendant qu'on bouge un curseur : on met à jour l'aperçu et les tuiles en direct
+$("#editeur-services").addEventListener("input", e => {
+  const cle = e.target.dataset.recad;
+  if (!cle) return;
+  const ligne = e.target.closest(".ligne-service");
+  const s = ligne && serviceParId(ligne.dataset.id);
+  if (!s) return;
+  const v = Number(e.target.value);
+  if (cle === "zoom") s.zoom = borne(v, 1, 3, 1);
+  if (cle === "posX") s.posX = borne(v, 0, 100, 50);
+  if (cle === "posY") s.posY = borne(v, 0, 100, 50);
+  e.target.nextElementSibling.textContent = cle === "zoom" ? Math.round(s.zoom * 100) + " %" : Math.round(v);
+  const style = styleImage(s);
+  ligne.querySelector(".recadrage img").setAttribute("style", style);
+  const tuileAccueil = document.querySelector(`#tuiles .tuile[data-id="${CSS.escape(s.id)}"] img`);
+  if (tuileAccueil) tuileAccueil.setAttribute("style", style);
+});
+
+// Modification d'un champ : on sauvegarde sans redessiner (pour ne pas perdre le focus)
+$("#editeur-services").addEventListener("change", e => {
+  if (e.target.dataset.recad) { servicesModifies(); sauvegarder(); return; } // curseur relâché : on garde le réglage
+  const champ = e.target.dataset.champ;
+  const ligne = e.target.closest(".ligne-service");
+  const s = ligne && serviceParId(ligne.dataset.id);
+  if (!champ || !s) return;
+  const v = e.target.value;
+  if (champ === "nom") {
+    if (v.trim()) s.nom = v.trim().slice(0, 40); else e.target.value = s.nom;
+  } else if (champ === "url") {
+    s.url = urlPropre(v); e.target.value = s.url;
+    if (v.trim() && !s.url) toast("Ce lien ne semble pas valide.");
+  } else if (champ === "prix") {
+    s.prix = Math.max(0, Math.round((Number(v) || 0) * 100) / 100);
+  } else if (champ === "renouvellement") {
+    s.renouvellement = dateValide(v) ? v : "";
+  } else if (champ === "couleur") {
+    if (couleurValide(v)) s.couleur = v;
+  }
+  servicesModifies();
+  sauvegarder();
+  rendreAccueil(); rendreListe(); rendreAbonnements();
+});
+
+// Boutons monter / descendre / retirer / image
+let serviceImageCible = null;
+$("#editeur-services").addEventListener("click", e => {
+  const b = e.target.closest("[data-act]");
+  if (!b) return;
+  const id = b.closest(".ligne-service").dataset.id;
+  const i = etat.services.findIndex(s => s.id === id);
+  if (i < 0) return;
+  const act = b.dataset.act;
+  if (act === "image") {
+    serviceImageCible = id;
+    $("#fichier-image").click();
+    return;
+  } else if (act === "retirer-image") {
+    etat.services[i].image = "";
+  } else if (act === "recadrer") {
+    recadrageOuvert.has(id) ? recadrageOuvert.delete(id) : recadrageOuvert.add(id);
+    rendreParametres();
+    return;
+  } else if (act === "recadrage-zero") {
+    Object.assign(etat.services[i], { zoom: 1, posX: 50, posY: 50 });
+  } else if (act === "ajustement") {
+    const v = b.dataset.valeur;
+    etat.services[i].ajustement = ["auto", "remplir", "entiere"].includes(v) ? v : "auto";
+    etat.services[i].ajusteManuel = v !== "auto";
+  } else if (act === "haut" && i > 0) {
+    [etat.services[i - 1], etat.services[i]] = [etat.services[i], etat.services[i - 1]];
+  } else if (act === "bas" && i < etat.services.length - 1) {
+    [etat.services[i + 1], etat.services[i]] = [etat.services[i], etat.services[i + 1]];
+  } else if (act === "retirer") {
+    // Confirmation en deux clics (pas de fenêtre « confirm » possible ici)
+    if (!b.classList.contains("confirmer")) {
+      b.classList.add("confirmer"); b.textContent = "Confirmer?";
+      setTimeout(() => { if (b.isConnected) { b.classList.remove("confirmer"); b.textContent = "Retirer"; } }, 3000);
+      return;
+    }
+    const nom = etat.services[i].nom;
+    etat.services.splice(i, 1);
+    toast(`${nom} retiré`);
+  } else return;
+  servicesModifies();
+  sauvegarder();
+  rendreTout();
+});
+
+/* Image importée : on la réduit (720 px max de côté) pour qu'elle prenne peu de place
+   dans le stockage, puis on la garde en PNG (ou JPEG pour une photo). */
+function preparerImage(fichier) {
+  return new Promise((ok, ko) => {
+    if (!/^image\/(png|jpeg|svg\+xml|webp)$/.test(fichier.type)) return ko(new Error("Format non accepté. Utilise PNG, JPG ou SVG."));
+    if (fichier.size > 8e6) return ko(new Error("Image trop lourde (8 Mo maximum)."));
+    const url = URL.createObjectURL(fichier);
+    const img = new Image();
+    img.onload = () => {
+      try {
+        const MAX = 720; // assez grand pour rester net quand l'image remplit la case
+        let w = img.naturalWidth || MAX, h = img.naturalHeight || MAX;
+        // Un SVG peut être agrandi sans perte ; une photo est seulement réduite
+        const r = fichier.type === "image/svg+xml" ? MAX / Math.max(w, h) : Math.min(1, MAX / Math.max(w, h));
+        const c = document.createElement("canvas");
+        c.width = Math.max(1, Math.round(w * r));
+        c.height = Math.max(1, Math.round(h * r));
+        c.getContext("2d").drawImage(img, 0, 0, c.width, c.height);
+        const ctx = c.getContext("2d");
+        // Si l'image n'a aucune transparence, on la garde en JPEG (beaucoup plus léger)
+        let transparente = false;
+        try {
+          const px = ctx.getImageData(0, 0, c.width, c.height).data;
+          for (let k = 3; k < px.length; k += 16) { if (px[k] < 250) { transparente = true; break; } }
+        } catch (e) { transparente = true; }
+        let data = transparente ? c.toDataURL("image/png") : c.toDataURL("image/jpeg", 0.88);
+        // Trop lourde ? On réessaie en plus petit
+        if (!imageValide(data)) {
+          const c2 = document.createElement("canvas");
+          c2.width = Math.round(c.width / 2); c2.height = Math.round(c.height / 2);
+          c2.getContext("2d").drawImage(c, 0, 0, c2.width, c2.height);
+          data = transparente ? c2.toDataURL("image/png") : c2.toDataURL("image/jpeg", 0.85);
+        }
+        URL.revokeObjectURL(url);
+        if (!imageValide(data)) return ko(new Error("Image trop grande même après réduction."));
+        ok(data);
+      } catch (e) {
+        URL.revokeObjectURL(url);
+        ko(new Error("Impossible de lire cette image."));
+      }
+    };
+    img.onerror = () => { URL.revokeObjectURL(url); ko(new Error("Impossible de lire cette image.")); };
+    img.src = url;
+  });
+}
+$("#fichier-image").addEventListener("change", async e => {
+  const f = e.target.files && e.target.files[0];
+  e.target.value = "";
+  const s = serviceParId(serviceImageCible);
+  if (!f || !s) return;
+  try {
+    const avant = s.image;
+    s.image = await preparerImage(f);
+    Object.assign(s, { zoom: 1, posX: 50, posY: 50 });
+    if (!s.ajusteManuel) s.ajustement = "auto"; // nouvelle image : cadrage automatique
+    servicesModifies();
+    if (!sauvegarder()) { s.image = avant; return; }
+    rendreTout();
+    toast(`Image ajoutée pour ${s.nom}`);
+  } catch (err) {
+    toast(err.message);
+  }
+});
+
+$("#btn-ajout-service").addEventListener("click", () => {
+  etat.services.push({
+    id: uid(), nom: "Nouveau service", url: "", couleur: "#9a9aa2", image: "", ajustement: "auto", ajusteManuel: false, zoom: 1, posX: 50, posY: 50,
+    prix: 0, renouvellement: "", derniereOuverture: null, ajouteLe: Date.now()
+  });
+  servicesModifies();
+  sauvegarder();
+  rendreTout();
+  // Met le curseur directement dans le nom du nouveau service
+  const champs = document.querySelectorAll("#editeur-services .ls-nom");
+  const dernier = champs[champs.length - 1];
+  if (dernier) { dernier.focus(); dernier.select(); }
+});
+
+// Thème
+function appliquerTheme() { document.documentElement.setAttribute("data-theme", etat.theme); }
+function basculerTheme(choix) {
+  etat.theme = choix || (etat.theme === "sombre" ? "clair" : "sombre");
+  appliquerTheme(); sauvegarder(); rendreParametres();
+}
+document.querySelectorAll("[data-theme-choix]").forEach(b =>
+  b.addEventListener("click", () => basculerTheme(b.dataset.themeChoix)));
+
+// Export (on enlève la clé TMDB pour ne pas la partager par accident)
+function texteExport() {
+  return JSON.stringify({ ...etat, tmdbCle: undefined, exporteLe: new Date().toISOString() }, null, 2);
+}
+function exporter() {
+  const zone = $("#zone-export");
+  zone.value = texteExport();
+  zone.hidden = false;
+  $("#btn-copier").hidden = false;
+  zone.focus(); zone.select();
+}
+$("#btn-exporter").addEventListener("click", exporter);
+$("#btn-copier").addEventListener("click", async () => {
+  const zone = $("#zone-export");
+  try {
+    await navigator.clipboard.writeText(zone.value);
+    toast("Copié! Colle-le dans un fichier .json pour le garder.");
+  } catch (e) {
+    zone.focus(); zone.select();
+    toast("Copie automatique bloquée : le texte est sélectionné, fais Ctrl+C.");
+  }
+});
+// Vrai fichier téléchargeable (seulement si la page a le droit de proposer un téléchargement)
+promesseTelechargement.then(dl => {
+  if (!dl) return;
+  const b = $("#btn-telecharger");
+  b.hidden = false;
+  b.addEventListener("click", async () => {
+    const jour = new Date().toISOString().slice(0, 10);
+    try {
+      await dl.save({ filename: `watchall-sauvegarde-${jour}.json`, data: texteExport() });
+      toast("Fichier enregistré.");
+    } catch (e) {
+      if (e && e.code === "declined") return;
+      if (e && (e.code === "unavailable" || e.code === "not_granted")) { b.hidden = true; }
+      toast("Le téléchargement n'a pas marché. Utilise « Afficher le texte » puis Copier.");
+    }
+  });
+});
+
+// Import : fichier ou texte collé, avec confirmation en deux clics
+$("#btn-fichier").addEventListener("click", () => $("#fichier-import").click());
+$("#fichier-import").addEventListener("change", e => {
+  const f = e.target.files && e.target.files[0];
+  if (!f) return;
+  const lecteur = new FileReader();
+  lecteur.onload = () => { $("#zone-import").value = String(lecteur.result || ""); toast("Fichier chargé. Clique sur Importer."); };
+  lecteur.onerror = () => toast("Impossible de lire ce fichier.");
+  lecteur.readAsText(f);
+  e.target.value = "";
+});
+let importEnAttente = null;
+$("#btn-importer").addEventListener("click", e => {
+  const b = e.currentTarget;
+  if (importEnAttente) {
+    const cle = etat.tmdbCle;
+    etat = importEnAttente;
+    if (!etat.tmdbCle) etat.tmdbCle = cle; // on garde ta clé actuelle
+    importEnAttente = null;
+    b.textContent = "Importer";
+    $("#zone-import").value = "";
+    appliquerTheme(); sauvegarder(); rendreTout();
+    toast("Données importées.");
+    return;
+  }
+  try {
+    const donnees = normaliser(JSON.parse($("#zone-import").value), true);
+    importEnAttente = donnees;
+    b.textContent = `Remplacer par ${donnees.services.length} services et ${donnees.liste.length} titres?`;
+    setTimeout(() => { if (importEnAttente === donnees) { importEnAttente = null; b.textContent = "Importer"; } }, 6000);
+  } catch (err) {
+    toast(err instanceof SyntaxError ? "Ce texte n'est pas du JSON valide." : err.message);
+  }
+});
+
+$("#btn-exclus").addEventListener("click", () => {
+  etat.exclus = [];
+  sauvegarder(); rendreParametres();
+  toast("Les titres masqués pourront être reproposés.");
+});
+
+$("#btn-tester-tmdb").addEventListener("click", async () => {
+  const saisie = $("#tmdb-cle").value.trim();
+  if (!saisie) { toast("Colle d'abord ta clé TMDB."); return; }
+  const avant = etat.tmdbCle;
+  etat.tmdbCle = saisie; // test avec la clé tapée, même pas encore enregistrée
+  try {
+    await appelTmdb("/configuration");
+    toast("La clé TMDB marche ! Pense à cliquer sur Enregistrer.");
+  } catch (e) {
+    toast(e && e.code === "cle_invalide" ? "Cette clé n'est pas acceptée par TMDB." : "Impossible de joindre TMDB pour l'instant.");
+  } finally {
+    etat.tmdbCle = avant;
+  }
+});
+$("#btn-tmdb").addEventListener("click", () => {
+  etat.tmdbCle = $("#tmdb-cle").value.trim();
+  sauvegarder();
+  toast(etat.tmdbCle ? "Clé TMDB enregistrée." : "Clé TMDB effacée.");
+});
+
+let resetArme = false;
+$("#btn-reset").addEventListener("click", e => {
+  const b = e.currentTarget;
+  if (!resetArme) {
+    resetArme = true; b.textContent = "Clique encore pour tout effacer";
+    setTimeout(() => { resetArme = false; b.textContent = "Réinitialiser"; }, 4000);
+    return;
+  }
+  resetArme = false; b.textContent = "Réinitialiser";
+  etat = etatDepart();
+  appliquerTheme(); sauvegarder(); rendreTout();
+  toast("Tout est remis à zéro.");
+});
+
+/* =========================================================
+   12. FENÊTRE MODALE
+   ========================================================= */
+let focusAvantModale = null;
+function ouvrirModale(html, large) {
+  focusAvantModale = document.activeElement;
+  $("#modale-contenu").innerHTML = html;
+  const boite = $("#modale .modale");
+  boite.classList.toggle("large", !!large);
+  boite.scrollTop = 0;
+  $("#modale").classList.add("ouvert");
+  setTimeout(() => { const b = $("#modale-contenu button"); if (b) b.focus(); }, 50);
+}
+function fermerModale() {
+  if (controleurClaude) { controleurClaude.abort(); controleurClaude = null; }
+  if (ctlTmdb) { ctlTmdb.abort(); ctlTmdb = null; }
+  $("#modale").classList.remove("ouvert");
+  if (focusAvantModale && focusAvantModale.focus) focusAvantModale.focus();
+}
+const modaleOuverte = () => $("#modale").classList.contains("ouvert");
+
+$("#modale").addEventListener("click", e => {
+  if (e.target.id === "modale") return fermerModale(); // clic sur le fond
+  if (actionSuggestion(e)) return;
+  const mode = e.target.closest("[data-mode]");
+  if (mode) { modeHasard = mode.dataset.mode; rendrePanneau(); return; }
+  const chip = e.target.closest("[data-groupe]");
+  if (chip) { basculerFiltre(chip.dataset.groupe, chip.dataset.valeur); return; }
+  const temps = e.target.closest("[data-temps]");
+  if (temps) {
+    tempsChoisi = temps.dataset.temps;
+    document.querySelectorAll(".choix-temps button").forEach(b => b.classList.toggle("actif", b === temps));
+    afficherProposition();
+    return;
+  }
+  const lien = e.target.closest("[data-ouvrir-service]");
+  if (lien) { noterOuverture(lien.dataset.ouvrirService); return; }
+});
+// Entrée dans le champ « envie » = lancer la recherche
+$("#modale").addEventListener("keydown", e => {
+  if (e.key === "Enter" && e.target.id === "envie") { e.preventDefault(); chercherIdees(); }
+});
+$("#modale").addEventListener("change", e => {
+  if (e.target.id === "envie") { etat.filtresDecouvrir.texte = texteCourt(e.target.value, 200); sauvegarder(); }
+});
+
+/* =========================================================
+   13. PALETTE DE COMMANDES (Ctrl+K ou /)
+   ========================================================= */
+let resultatsPalette = [];
+let indexPalette = 0;
+let focusAvantPalette = null;
+
+function elementsPalette(avecTitres) {
+  const items = etat.services.map(s => ({
+    libelle: s.nom, detail: "Ouvrir", couleur: s.couleur,
+    faire: () => ouvrirService(s)
+  }));
+  items.push(
+    { libelle: "Je sais pas quoi regarder", detail: "Action", faire: ouvrirHasard },
+    { libelle: "Ajouter un titre à ma liste", detail: "Action", faire: () => { allerA("liste"); setTimeout(() => $("#form-ajout").titre.focus(), 60); } },
+    { libelle: "Accueil", detail: "Aller à", faire: () => allerA("accueil") },
+    { libelle: "Ma liste", detail: "Aller à", faire: () => allerA("liste") },
+    { libelle: "Déjà vu", detail: "Aller à", faire: () => { filtreListe = "fini"; rendreListe(); allerA("liste"); } },
+    { libelle: "Abonnements", detail: "Aller à", faire: () => allerA("abonnements") },
+    { libelle: "Paramètres", detail: "Aller à", faire: () => allerA("parametres") },
+    { libelle: etat.theme === "sombre" ? "Passer au thème clair" : "Passer au thème sombre", detail: "Action", faire: () => basculerTheme() },
+    { libelle: "Raccourcis clavier", detail: "Aide", faire: ouvrirAide },
+    { libelle: "Exporter mes données", detail: "Action", faire: () => { allerA("parametres"); setTimeout(exporter, 60); } }
+  );
+  if (avecTitres) {
+    etat.liste.filter(t => t.statut !== "fini").forEach(t => {
+      const s = serviceParId(t.serviceId);
+      items.push({
+        libelle: t.titre, detail: s ? `Ma liste · ${s.nom}` : "Ma liste",
+        couleur: s ? s.couleur : null,
+        faire: () => s ? ouvrirService(s) : allerA("liste")
+      });
+    });
+  }
+  return items;
+}
+
+function filtrerPalette() {
+  const q = sansAccents($("#palette-champ").value);
+  const mots = q.split(/\s+/).filter(Boolean);
+  const tous = elementsPalette(mots.length > 0);
+  resultatsPalette = mots.length
+    ? tous.filter(it => { const t = sansAccents(it.libelle + " " + it.detail); return mots.every(m => t.includes(m)); }).slice(0, 12)
+    : tous;
+  // Un titre qui n'est pas encore dans la liste : on propose de l'ajouter directement
+  const brut = $("#palette-champ").value.trim();
+  if (brut.length >= 2 && !titreConnu(brut)) {
+    resultatsPalette.push({
+      libelle: `Ajouter « ${texteCourt(brut, 60)} » à ma liste`, detail: "Action",
+      faire: () => { allerA("liste"); setTimeout(() => { const c = $("#form-ajout").titre; c.value = texteCourt(brut, 120); c.focus(); }, 60); }
+    });
+  }
+  indexPalette = 0;
+  dessinerPalette();
+}
+
+function dessinerPalette() {
+  const ul = $("#palette-resultats");
+  if (!resultatsPalette.length) { ul.innerHTML = `<li class="p-vide">Aucun résultat.</li>`; return; }
+  ul.innerHTML = resultatsPalette.map((it, i) => `
+    <li role="option" data-i="${i}" class="${i === indexPalette ? "choisi" : ""}" aria-selected="${i === indexPalette}">
+      ${it.couleur ? `<span class="point" style="--c:${esc(it.couleur)}"></span>` : `<span class="p-sans-point"></span>`}
+      <span class="p-libelle">${esc(it.libelle)}</span>
+      <span class="p-detail">${esc(it.detail)}</span>
+    </li>`).join("");
+  const choisi = ul.querySelector(".choisi");
+  if (choisi) choisi.scrollIntoView({ block: "nearest" });
+}
+
+function ouvrirPalette() {
+  if (modaleOuverte()) fermerModale();
+  focusAvantPalette = document.activeElement;
+  $("#palette").classList.add("ouvert");
+  const champ = $("#palette-champ");
+  champ.value = "";
+  filtrerPalette();
+  setTimeout(() => champ.focus(), 30);
+}
+function fermerPalette() {
+  $("#palette").classList.remove("ouvert");
+  if (focusAvantPalette && focusAvantPalette.focus) focusAvantPalette.focus();
+}
+const paletteOuverte = () => $("#palette").classList.contains("ouvert");
+
+function executerPalette(i) {
+  const it = resultatsPalette[i];
+  if (!it) return;
+  fermerPalette();
+  it.faire();
+}
+
+$("#palette-champ").addEventListener("input", filtrerPalette);
+$("#palette-champ").addEventListener("keydown", e => {
+  const n = Math.max(1, resultatsPalette.length);
+  if (e.key === "ArrowDown") { e.preventDefault(); indexPalette = (indexPalette + 1) % n; dessinerPalette(); }
+  else if (e.key === "ArrowUp") { e.preventDefault(); indexPalette = (indexPalette - 1 + n) % n; dessinerPalette(); }
+  else if (e.key === "Enter") { e.preventDefault(); executerPalette(indexPalette); }
+});
+$("#palette-resultats").addEventListener("mousemove", e => {
+  const li = e.target.closest("li[data-i]");
+  if (li && Number(li.dataset.i) !== indexPalette) { indexPalette = Number(li.dataset.i); dessinerPalette(); }
+});
+$("#palette-resultats").addEventListener("click", e => {
+  const li = e.target.closest("li[data-i]");
+  if (li) executerPalette(Number(li.dataset.i));
+});
+$("#palette").addEventListener("click", e => { if (e.target.id === "palette") fermerPalette(); });
+
+/* =========================================================
+   14. RACCOURCIS CLAVIER ET BOUTONS GÉNÉRAUX
+   ========================================================= */
+document.addEventListener("keydown", e => {
+  // Ctrl+K (ou Cmd+K sur Mac) : ouvre / ferme la palette
+  if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === "k") {
+    e.preventDefault();
+    paletteOuverte() ? fermerPalette() : ouvrirPalette();
+    return;
+  }
+  if (e.key === "Escape") {
+    if (paletteOuverte()) fermerPalette();
+    else if (modaleOuverte()) fermerModale();
+    else if ($("#retour").classList.contains("visible")) fermerRetour();
+    return;
+  }
+  if (paletteOuverte() || modaleOuverte()) return;
+  // On ignore les touches tapées dans un champ texte
+  if (e.target.closest && e.target.closest("input, textarea, select, [contenteditable]")) return;
+  if (e.ctrlKey || e.metaKey || e.altKey) return;
+
+  if (e.key === "?") { e.preventDefault(); ouvrirAide(); return; }
+  if (e.key === "/") { e.preventDefault(); ouvrirPalette(); return; }
+  if (/^[1-9]$/.test(e.key)) {
+    const s = etat.services[Number(e.key) - 1];
+    if (s) { e.preventDefault(); ouvrirService(s); }
+    return;
+  }
+  const lettres = {
+    r: ouvrirHasard,
+    a: () => allerA("accueil"),
+    l: () => allerA("liste"),
+    b: () => allerA("abonnements"),
+    p: () => allerA("parametres"),
+    t: () => basculerTheme()
+  };
+  const action = lettres[e.key.toLowerCase()];
+  if (action && !e.shiftKey) { e.preventDefault(); action(); }
+});
+
+// Boutons avec data-action (n'importe où dans la page)
+document.addEventListener("click", e => {
+  const b = e.target.closest("[data-action]");
+  if (!b || b.disabled) return;
+  const a = b.dataset.action;
+  if (a === "palette") ouvrirPalette();
+  else if (a === "hasard") ouvrirHasard();
+  else if (a === "aide") ouvrirAide();
+  else if (a === "fermer-modale") fermerModale();
+  else if (a === "relancer") afficherProposition();
+  else if (a === "chercher" || a === "autres") chercherIdees();
+  else if (a === "stop") { if (controleurClaude) controleurClaude.abort(); if (ctlTmdb) ctlTmdb.abort(); }
+  else if (a === "effacer-filtres") {
+    const exclues = etat.filtresDecouvrir.plateformesExclues;
+    etat.filtresDecouvrir = { ...filtresDepart(), plateformesExclues: exclues };
+    sauvegarder(); rendrePanneau();
+  }
+  else if (a === "mode-liste") { modeHasard = "liste"; rendrePanneau(); }
+  else if (a === "mode-decouvrir") { modeHasard = "decouvrir"; rendrePanneau(); }
+  else if (a === "aller-liste") { fermerModale(); allerA("liste"); setTimeout(() => $("#form-ajout input")?.focus(), 50); }
+});
+
+/* =========================================================
+   15. « BON RETOUR » : QUAND TU REVIENS D'UN SERVICE
+   Quand tu fermes Netflix (onglet ou fenêtre) et que tu retombes
+   sur Watchall, une petite carte te demande si tu as fini quelque chose.
+   ========================================================= */
+let retourAttendu = null;              // { serviceId, depuis } : service ouvert récemment
+let retourService = null;              // service concerné par la carte affichée
+const DELAI_MIN_RETOUR = 20 * 1000;    // moins de 20 s ailleurs = simple aller-retour, on ne dit rien
+
+function verifierRetour() {
+  if (!retourAttendu || document.visibilityState === "hidden") return;
+  const absence = Date.now() - retourAttendu.depuis;
+  // Encore trop tôt : on garde l'info, la personne vient peut-être juste de cliquer
+  if (absence < DELAI_MIN_RETOUR) return;
+  const s = serviceParId(retourAttendu.serviceId);
+  retourAttendu = null;
+  if (s) afficherRetour(s);
+}
+// On écoute les trois façons de « revenir » : onglet réaffiché, fenêtre reprend le focus, page restaurée
+document.addEventListener("visibilitychange", verifierRetour);
+window.addEventListener("focus", verifierRetour);
+window.addEventListener("pageshow", verifierRetour);
+
+function afficherRetour(s) {
+  retourService = s;
+  $("#retour-contenu").innerHTML = `
+    <h3><span class="point" style="--c:${esc(s.couleur)}"></span>Bon retour de ${esc(s.nom)}.</h3>
+    <p class="muet" style="margin:0">Tu as fini quelque chose ?</p>
+    <div class="rangee" style="margin-top:16px">
+      <button class="bouton-plein bouton-petit" data-retour="fini">Oui, j'ai fini</button>
+      <button class="bouton-contour bouton-petit" data-retour="ensuite">On regarde quoi ensuite ?</button>
+      <button class="lien-discret" data-retour="fermer">Non, rien</button>
+    </div>`;
+  $("#retour").classList.add("visible");
+  document.body.classList.add("avec-retour");
+}
+function fermerRetour() {
+  $("#retour").classList.remove("visible");
+  document.body.classList.remove("avec-retour");
+  retourService = null;
+}
+
+// Étape 2 : quel titre as-tu fini ? (d'abord ceux de ce service, en cours en premier)
+function afficherChoixFini() {
+  const s = retourService;
+  if (!s) return;
+  const ordre = { "en-cours": 0, "a-voir": 1 };
+  const pasFinis = etat.liste.filter(t => t.statut !== "fini");
+  let titres = pasFinis.filter(t => t.serviceId === s.id);
+  const autres = titres.length === 0;
+  if (autres) titres = pasFinis;
+  titres = titres.sort((a, b) => ordre[a.statut] - ordre[b.statut] || b.ajouteLe - a.ajouteLe).slice(0, 8);
+  $("#retour-contenu").innerHTML = `
+    <h3>Qu'est-ce que tu as fini ?</h3>
+    ${titres.length ? `
+      ${autres ? `<p class="muet" style="margin:0;font-size:13px">Rien de ${esc(s.nom)} dans ta liste, voici tes autres titres.</p>` : ""}
+      <ul class="retour-choix">
+        ${titres.map(t => {
+          const serv = serviceParId(t.serviceId);
+          return `<li><button data-retour-titre="${esc(t.id)}">
+            <span class="point" style="--c:${serv ? esc(serv.couleur) : "var(--pale)"}"></span>
+            <span class="r-titre">${esc(t.titre)}</span>
+            <span class="r-meta">${STATUTS[t.statut]}</span></button></li>`;
+        }).join("")}
+      </ul>` : `<p class="muet" style="margin:0">Ta liste est vide pour l'instant.</p>`}
+    <form class="rangee" id="retour-autre" style="margin-top:14px" autocomplete="off">
+      <input class="champ" name="titre" maxlength="120" placeholder="Autre titre…" style="flex:1;min-width:160px" aria-label="Autre titre">
+      <button class="bouton-contour bouton-petit" type="submit">Ajouter</button>
+    </form>`;
+}
+
+// Étape 3 : le titre passe en « Déjà vu » et on propose de le noter
+function marquerFini(t) {
+  t.statut = "fini";
+  sauvegarder();
+  rendreListe(); rendreAccueil();
+  $("#retour-contenu").innerHTML = `
+    <h3>${esc(t.titre)}</h3>
+    <p class="muet" style="margin:0">Ajouté à Déjà vu. Ta note ?</p>
+    <div style="margin-top:10px" data-retour-note="${esc(t.id)}">${etoilesHTML(t.note, "note-retour")}</div>
+    <div class="rangee" style="margin-top:16px">
+      <button class="bouton-contour bouton-petit" data-retour="ensuite">On regarde quoi ensuite ?</button>
+      <button class="lien-discret" data-retour="fermer">Fermer</button>
+    </div>`;
+}
+
+$("#retour").addEventListener("click", e => {
+  const b = e.target.closest("[data-retour], [data-retour-titre], [data-act='note-retour']");
+  if (!b) return;
+  if (b.dataset.retourTitre) {
+    const t = etat.liste.find(x => x.id === b.dataset.retourTitre);
+    if (t) marquerFini(t);
+    return;
+  }
+  if (b.dataset.act === "note-retour") {
+    const boite = b.closest("[data-retour-note]");
+    const t = boite && etat.liste.find(x => x.id === boite.dataset.retourNote);
+    if (!t) return;
+    const n = Number(b.dataset.note);
+    t.note = t.note === n ? 0 : n;
+    sauvegarder(); rendreListe();
+    boite.innerHTML = etoilesHTML(t.note, "note-retour");
+    if (t.note) toast(`${t.note} sur 5 pour « ${t.titre} »`);
+    return;
+  }
+  const a = b.dataset.retour;
+  if (a === "fermer") fermerRetour();
+  else if (a === "fini") afficherChoixFini();
+  else if (a === "ensuite") { fermerRetour(); modeHasard = "decouvrir"; ouvrirHasard(); }
+});
+// « Autre titre » : on l'ajoute directement en Déjà vu sur ce service
+$("#retour").addEventListener("submit", e => {
+  e.preventDefault();
+  const titre = e.target.titre.value.trim();
+  if (!titre || !retourService) return;
+  const t = {
+    id: uid(), titre: titre.slice(0, 120), serviceId: retourService.id, statut: "fini",
+    duree: 0, type: "", genres: [], annee: null, note: 0, ajouteLe: Date.now()
+  };
+  etat.liste.push(t);
+  marquerFini(t);
+});
+
+/* =========================================================
+   16. CONFIGURATION PARTAGÉE (MODE PROPRIÉTAIRE)
+   Le propriétaire publie ses services et ses images DANS la page :
+   tous ceux qui ouvrent le lien arrivent sur la même base.
+   ========================================================= */
+const promesseArtifact = capacite("artifact");
+let artifactPub = null;
+let montrerProprio = false;
+
+function servicesModifies() {
+  if (etat.suitConfigPartagee) { etat.suitConfigPartagee = false; rendrePartage(); }
+}
+
+const fmtDateHeure = new Intl.DateTimeFormat("fr-CA", { day: "numeric", month: "long", hour: "numeric", minute: "2-digit" });
+
+function rendrePartage() {
+  const proprio = $("#partage-proprio"), visiteur = $("#partage-visiteur");
+  // Le bouton « Publier » s'affiche seulement si la page peut se republier
+  // Un visiteur ne voit pas le bouton (sauf s'il clique « Je suis le propriétaire », ex. nouvel appareil)
+  proprio.hidden = !artifactPub || (!!CONFIG && !etat.proprietaire && !montrerProprio);
+  $("#btn-je-suis-proprio").hidden = !artifactPub || montrerProprio;
+  visiteur.hidden = !CONFIG || etat.proprietaire;
+  if (CONFIG && !etat.proprietaire) {
+    $("#texte-visiteur").textContent = etat.suitConfigPartagee
+      ? "Tes services, liens et images suivent la configuration de Watchall. Ta liste, tes notes et tes prix restent à toi."
+      : "Tu as personnalisé tes services. Tu peux revenir à la configuration de Watchall quand tu veux (ta liste et tes prix sont gardés).";
+    $("#btn-suivre-config").hidden = etat.suitConfigPartagee;
+  }
+  $("#statut-partage").textContent = CONFIG && CONFIG.publieLe
+    ? `Configuration publiée le ${fmtDateHeure.format(new Date(CONFIG.publieLe))}.`
+    : (artifactPub ? "Aucune configuration publiée pour l'instant." : "");
+  $("#bloc-partage").hidden = proprio.hidden && visiteur.hidden && !$("#statut-partage").textContent;
+}
+
+/* Reconstruit la page d'origine (sans rien de ce que le navigateur ou claude.ai
+   a pu y ajouter) et y glisse la configuration. */
+function construirePagePartagee(config) {
+  const doc = new DOMParser().parseFromString("<!DOCTYPE html>" + SOURCE_PAGE, "text/html");
+  [...doc.head.children].forEach(el => {
+    const garder =
+      (el.tagName === "META" && (el.hasAttribute("charset") || el.getAttribute("name") === "viewport")) ||
+      el.tagName === "TITLE" ||
+      (el.tagName === "LINK" && /fonts\.(googleapis|gstatic)\.com/.test(el.getAttribute("href") || "")) ||
+      el.id === "style-app" || el.id === "config-partagee";
+    if (!garder) el.remove();
+  });
+  const idsCorps = ["bandeau-stockage", "palette", "modale", "retour", "toast", "app"];
+  [...doc.body.children].forEach(el => {
+    if (!(idsCorps.includes(el.id) || el.matches("header.entete, main"))) el.remove();
+  });
+  doc.documentElement.setAttribute("data-theme", "sombre");
+  doc.body.removeAttribute("class");
+  const bloc = doc.getElementById("config-partagee");
+  const app = doc.getElementById("app");
+  if (!bloc || !app || !doc.getElementById("style-app")) throw new Error("page-incomplete");
+  // « < » encodé pour que le texte ne puisse jamais fermer la balise <script>
+  bloc.textContent = JSON.stringify(config).replace(/</g, "\\u003c");
+  return "<!DOCTYPE html>\n" + doc.documentElement.outerHTML;
+}
+
+let publicationArmee = false;
+async function publierConfig() {
+  const b = $("#btn-publier-config");
+  if (!publicationArmee) {
+    publicationArmee = true;
+    b.textContent = "Clique encore pour publier pour tout le monde";
+    setTimeout(() => { if (publicationArmee) { publicationArmee = false; b.textContent = "Publier ma configuration pour tout le monde"; } }, 5000);
+    return;
+  }
+  publicationArmee = false;
+  const sansLien = etat.services.filter(s => !s.url).length;
+  const config = {
+    version: 1,
+    publieLe: Date.now(),
+    services: etat.services.map(s => ({
+      id: s.id, nom: s.nom, url: s.url, couleur: s.couleur, image: s.image,
+      ajustement: s.ajustement, zoom: s.zoom, posX: s.posX, posY: s.posY
+    }))
+  };
+  b.disabled = true; b.textContent = "Publication…";
+  try {
+    const html = construirePagePartagee(config);
+    etat.proprietaire = true; etat.suitConfigPartagee = false;
+    sauvegarder();
+    await artifactPub.publish(html); // la page se recharge toute seule avec la nouvelle version
+    toast("Configuration publiée !" + (sansLien ? ` (${sansLien} service sans lien)` : ""));
+  } catch (e) {
+    const code = e && e.code;
+    if (code === "not_granted" || code === "not_writer") {
+      etat.proprietaire = false; sauvegarder();
+      artifactPub = null;
+      toast("Seul le propriétaire de Watchall peut publier la configuration.");
+    } else if (code === "conflict") {
+      toast("La page venait d'être modifiée ailleurs. Recharge-la et réessaie.");
+    } else {
+      toast("La publication n'a pas marché. Réessaie dans un moment.");
+    }
+  } finally {
+    b.disabled = false; b.textContent = "Publier ma configuration pour tout le monde";
+    rendrePartage();
+  }
+}
+$("#btn-publier-config").addEventListener("click", publierConfig);
+$("#btn-je-suis-proprio").addEventListener("click", () => { montrerProprio = true; rendrePartage(); });
+$("#btn-suivre-config").addEventListener("click", () => {
+  etat.suitConfigPartagee = true;
+  appliquerConfig(etat);
+  sauvegarder(); rendreTout();
+  toast("Tu suis maintenant la configuration de Watchall.");
+});
+promesseArtifact.then(a => {
+  if (a && typeof a.publish === "function" && SOURCE_PAGE) artifactPub = a;
+  rendrePartage();
+});
+
+/* =========================================================
+   17. DÉMARRAGE
+   ========================================================= */
+function rendreTout() {
+  rendreAccueil();
+  rendreListe();
+  rendreAbonnements();
+  rendreParametres();
+  rendrePartage();
+}
+
+if (!stockageOK) $("#bandeau-stockage").hidden = false;
+appliquerTheme();
+rendreTout();
+afficherVue();
+sauvegarder(); // enregistre tout de suite au nouveau format (tes anciennes données sont gardées)
+// Met à jour le « Bonjour / Bonsoir » et les compteurs de jours si l'onglet reste ouvert longtemps
+setInterval(() => { rendreAccueil(); rendreAbonnements(); }, 5 * 60 * 1000);
+</script>
+</body>
+</html>
