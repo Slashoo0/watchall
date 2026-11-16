@@ -520,6 +520,8 @@ textarea.champ { min-height: 140px; font-family: var(--mono); font-size: 12px; r
   transition: all .35s var(--ease); max-width: calc(100% - 32px); text-align: center;
 }
 .toast.visible { transform: translate(-50%, 0); opacity: 1; }
+.toast.avec-bouton.visible { pointer-events: auto; }
+.toast-bouton { margin-left: 8px; background: none; border: 0; color: inherit; font: inherit; font-weight: 600; text-decoration: underline; cursor: pointer; padding: 4px 2px; }
 /* Quand la carte « Bon retour » est ouverte, le message passe en haut pour ne pas la cacher */
 .avec-retour .toast { bottom: auto; top: 24px; transform: translate(-50%, -16px); }
 .avec-retour .toast.visible { transform: translate(-50%, 0); }
@@ -786,6 +788,18 @@ const SOURCE_PAGE = (() => { try { return document.documentElement.outerHTML; } 
 /* =========================================================
    1. DONNÉES DE DÉPART ET STOCKAGE
    ========================================================= */
+/* Liens qui ouvrent directement l'app sur iPhone (au lieu du site web).
+   Ils ne servent que sur iPhone / iPad. Vide = on ouvre le site web comme avant.
+   Netflix (nflx://) est bien documenté ; les autres sont les liens connus, mais pas garantis. */
+const APPS_DEPART = { "netflix": "nflx://", "disney+": "disneyplus://", "youtube": "youtube://", "prime video": "aiv://" };
+const appParDefaut = nom => APPS_DEPART[String(nom || "").trim().toLowerCase()] || "";
+// Accepte « quelquechose:// » mais jamais les liens dangereux (javascript:, data:, fichier…)
+function lienAppValide(v) {
+  const t = String(v || "").trim();
+  if (!t || t.length > 200 || !/^[a-z][a-z0-9+.-]*:\/\/\S*$/i.test(t)) return null;
+  if (/^(javascript|data|vbscript|file|https?):/i.test(t)) return null;
+  return t;
+}
 const CLE_STOCKAGE = "ecrans.tableauStreaming.v1"; // même clé que la v1 : tes données sont gardées
 const JOUR = 86400000; // millisecondes dans une journée
 
@@ -839,7 +853,7 @@ function etatDepartBase(maintenant) {
     version: 2,
     theme: "sombre",
     services: SERVICES_DEPART.map(s => ({
-      id: uid(), nom: s.nom, url: s.url, couleur: s.couleur, image: "",
+      id: uid(), nom: s.nom, url: s.url, app: appParDefaut(s.nom), couleur: s.couleur, image: "",
       ajustement: "auto", ajusteManuel: false, zoom: 1, posX: 50, posY: 50, tel: cadrageNeuf(),
       prix: 0, renouvellement: "", derniereOuverture: null, ajouteLe: maintenant
     })),
@@ -895,6 +909,8 @@ function normaliser(d, strict) {
             id: String(s.id || uid()),
             nom: s.nom.trim().slice(0, 40),
             url: urlPropre(s.url),
+            // Pas de champ « app » (anciennes données, config.json) : lien connu selon le nom
+            app: typeof s.app === "string" ? (lienAppValide(s.app) || "") : appParDefaut(s.nom),
             couleur: couleurValide(s.couleur) ? s.couleur : "#888888",
             image: imageValide(s.image) ? s.image : "",
             // « auto » (par défaut) : l'app choisit seule entre remplir et image entière
@@ -995,7 +1011,7 @@ function configDepuis(brut) {
 }
 // Ce qu'un service a de commun à tout le monde (pas de prix ni de dates perso)
 const partieCommune = s => ({
-  id: s.id, nom: s.nom, url: s.url, couleur: s.couleur, image: s.image,
+  id: s.id, nom: s.nom, url: s.url, app: s.app, couleur: s.couleur, image: s.image,
   ajustement: s.ajustement, ajusteManuel: s.ajusteManuel, zoom: s.zoom, posX: s.posX, posY: s.posY,
   tel: { ...s.tel }
 });
@@ -1160,8 +1176,21 @@ function etoilesHTML(note, act) {
 }
 
 let minuterieToast;
+// Message avec un bouton (ex. « Ouvrir le site »), affiché plus longtemps
+function toastAction(msg, libelle, action) {
+  const t = $("#toast");
+  t.textContent = msg + " ";
+  const b = document.createElement("button");
+  b.className = "toast-bouton"; b.textContent = libelle;
+  b.addEventListener("click", () => { t.classList.remove("visible"); action(); });
+  t.appendChild(b);
+  t.classList.add("visible", "avec-bouton");
+  clearTimeout(minuterieToast);
+  minuterieToast = setTimeout(() => t.classList.remove("visible", "avec-bouton"), 7000);
+}
 function toast(msg) {
   const t = $("#toast");
+  t.classList.remove("avec-bouton");
   t.textContent = msg;
   t.classList.add("visible");
   clearTimeout(minuterieToast);
@@ -1188,7 +1217,44 @@ function noterOuverture(id) {
    c'est ce qui permet à l'iPhone d'ouvrir directement l'app (Netflix, Crave…) sans
    laisser un onglet Safari revenir par-dessus. Sur ordi : nouvel onglet, comme avant. */
 const ouvrirIci = () => window.matchMedia("(hover: none) and (pointer: coarse)").matches;
+/* iPhone / iPad (les iPad récents se présentent comme un Mac avec écran tactile) */
+const estIOS = () => /iPad|iPhone|iPod/.test(navigator.userAgent) ||
+  (navigator.platform === "MacIntel" && navigator.maxTouchPoints > 1);
+
+/* Ouvre l'app (Netflix, etc.) par son lien d'app. Safari demande « Ouvrir dans … ? ».
+   Si rien ne se passe (app pas installée, refus), on propose d'ouvrir le site web. */
+function essayerApp(s) {
+  let parti = false;
+  const partir = () => { parti = true; };
+  document.addEventListener("visibilitychange", () => { if (document.hidden) partir(); }, { once: true });
+  window.addEventListener("pagehide", partir, { once: true });
+  window.addEventListener("blur", partir, { once: true });
+  location.href = s.app;
+  setTimeout(() => {
+    if (parti || document.hidden) return;
+    toastAction(`L'app ${s.nom} ne s'est pas ouverte ?`, "Ouvrir le site", () => { location.href = s.url; });
+  }, 2500);
+}
+// Le service visé par un lien (tuile, bouton « Ouvrir », flèche de Ma liste)
+function serviceDuLien(a) {
+  const id = a.dataset.id || a.dataset.ouvrirService;
+  if (id) return serviceParId(id);
+  const t = a.closest("[data-id]");
+  const parId = t && serviceParId(t.dataset.id);
+  if (parId && parId.url === a.href) return parId;
+  return etat.services.find(x => x.url && x.url === a.href) || null;
+}
 document.addEventListener("click", e => {
+  const lienService = e.target.closest("a[href]");
+  if (lienService && estIOS() && !lienService.closest(".credits, .source-donnees")) {
+    const s = serviceDuLien(lienService);
+    if (s && s.app && s.url) {
+      e.preventDefault(); e.stopPropagation();
+      noterOuverture(s.id);
+      essayerApp(s);
+      return;
+    }
+  }
   const a = e.target.closest('a[target="_blank"]');
   if (!a || !ouvrirIci()) return;
   if (a.closest(".credits, .source-donnees")) return; // les crédits TMDB / JustWatch gardent un nouvel onglet
@@ -1198,6 +1264,7 @@ document.addEventListener("click", e => {
 function ouvrirService(s) {
   if (!s || !s.url) { toast("Ce service n'a pas de lien. Ajoute-le dans Paramètres."); return; }
   noterOuverture(s.id);
+  if (estIOS() && s.app) { essayerApp(s); return; } // iPhone : directement l'app
   const a = document.createElement("a");
   a.href = s.url; a.rel = "noopener noreferrer";
   if (!ouvrirIci()) a.target = "_blank";
@@ -2220,6 +2287,7 @@ function rendreParametres() {
       </div>
       <div class="ls-champs">
         <label>Lien<input class="champ" data-champ="url" type="url" value="${esc(s.url)}" placeholder="https://…"></label>
+        <label>Lien de l'app (iPhone)<input class="champ" data-champ="app" type="text" autocapitalize="off" autocorrect="off" spellcheck="false" value="${esc(s.app || "")}" placeholder="ex. nflx:// (vide = site web)"></label>
         <label>Prix mensuel ($ CA)<input class="champ" data-champ="prix" type="number" min="0" step="0.01" value="${s.prix || ""}" placeholder="0,00"></label>
         <label>Renouvellement<input class="champ" data-champ="renouvellement" type="date" value="${esc(s.renouvellement)}"></label>
       </div>
@@ -2299,6 +2367,9 @@ $("#editeur-services").addEventListener("change", e => {
   } else if (champ === "url") {
     s.url = urlPropre(v); e.target.value = s.url;
     if (v.trim() && !s.url) toast("Ce lien ne semble pas valide.");
+  } else if (champ === "app") {
+    s.app = lienAppValide(v) || ""; e.target.value = s.app;
+    if (v.trim() && !s.app) toast("Ce lien d'app ne semble pas valide (ex. nflx://).");
   } else if (champ === "prix") {
     s.prix = Math.max(0, Math.round((Number(v) || 0) * 100) / 100);
   } else if (champ === "renouvellement") {
@@ -2430,7 +2501,7 @@ $("#fichier-image").addEventListener("change", async e => {
 
 $("#btn-ajout-service").addEventListener("click", () => {
   etat.services.push({
-    id: uid(), nom: "Nouveau service", url: "", couleur: "#9a9aa2", image: "", ajustement: "auto", ajusteManuel: false, zoom: 1, posX: 50, posY: 50, tel: cadrageNeuf(),
+    id: uid(), nom: "Nouveau service", url: "", app: "", couleur: "#9a9aa2", image: "", ajustement: "auto", ajusteManuel: false, zoom: 1, posX: 50, posY: 50, tel: cadrageNeuf(),
     prix: 0, renouvellement: "", derniereOuverture: null, ajouteLe: Date.now()
   });
   servicesModifies();
