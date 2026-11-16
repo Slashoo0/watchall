@@ -354,11 +354,19 @@ input[type="color"]::-moz-color-swatch { border: 0; border-radius: 50%; }
 .apercu-image img { max-width: 80%; max-height: 80%; object-fit: contain; }
 /* Outil de recadrage dans Paramètres */
 .recadrage {
-  display: grid; grid-template-columns: 240px 1fr; gap: 20px; align-items: center;
+  display: grid; grid-template-columns: 260px 1fr; gap: 20px; align-items: center;
   margin-top: 14px; padding: 16px; border-radius: 14px; background: var(--surface-2);
   animation: apparait .35s var(--ease);
 }
 .recadrage .tuile { min-height: 0; aspect-ratio: 4 / 3; pointer-events: none; }
+/* L'aperçu a la vraie taille d'une case sur l'appareil choisi */
+.apercu-appareil { display: flex; flex-direction: column; align-items: center; gap: 8px; }
+.recadrage .tuile.apercu-ordi { width: 250px; max-width: 100%; aspect-ratio: 250 / 174; }
+.recadrage .tuile.apercu-tel { width: 168px; aspect-ratio: 168 / 130; }
+.recadrage .tuile.apercu-tel.entiere .tuile-fond img { padding: 10px 12px 38px; }
+.recadrage .tuile.apercu-tel .tuile-pied { padding: 36px 16px 14px; }
+.choix-appareil { display: flex; align-items: center; flex-wrap: wrap; gap: 10px 14px; margin: 0 0 16px; }
+.petit { font-size: 12px; }
 .recadrage .tuile:hover { transform: none; }
 .reglages { display: flex; flex-direction: column; gap: 14px; }
 .reglages label { display: grid; grid-template-columns: 118px 1fr 46px; align-items: center; gap: 12px; font-size: 13px; color: var(--muet); }
@@ -535,6 +543,7 @@ textarea.champ { min-height: 140px; font-family: var(--mono); font-size: 12px; r
   .tuile-nom { font-size: 26px; }
   .tuile-logo img { max-height: 40px; max-width: 75%; }
   .tuile.avec-image .tuile-pied { padding: 36px 16px 14px; }
+  .tuile.entiere .tuile-fond img { padding: 10px 12px 38px; } /* petite case : moins de marge autour du logo */
   .form-ajout { grid-template-columns: 1fr 1fr; }
   .form-ajout .bouton-plein { grid-column: 1 / -1; }
   .totaux { grid-template-columns: 1fr; }
@@ -707,6 +716,11 @@ textarea.champ { min-height: 140px; font-family: var(--mono); font-size: 12px; r
         <p class="muet">Publie tes services, liens, couleurs, images et recadrages comme version de base pour tous ceux qui ouvrent ton lien. Tes prix, ta liste, tes notes et ta clé restent privés.</p>
         <button class="bouton-plein" id="btn-publier-config">Publier ma configuration pour tout le monde</button>
       </div>
+      <!-- Pour le propriétaire, sur le site : fichier config.json à déposer sur GitHub -->
+      <div id="partage-site" hidden>
+        <p class="muet">Pour que tout le monde voie tes services, logos et cadrages (ordi et téléphone) : télécharge le fichier <strong>config.json</strong>, puis dépose-le sur GitHub à côté d'index.html. Tes prix, ta liste, tes notes et ta clé ne sont pas dedans. Refais-le chaque fois que tu changes un logo ou un cadrage.</p>
+        <button class="bouton-plein" id="btn-exporter-config">Télécharger config.json</button>
+      </div>
       <!-- Pour les visiteurs -->
       <div id="partage-visiteur" hidden>
         <p class="muet" id="texte-visiteur"></p>
@@ -807,13 +821,26 @@ function etatDepart() {
   if (CONFIG) appliquerConfig(e); // appelée seulement après la lecture de CONFIG
   return e;
 }
+// Cadrage d'une image : choix d'affichage + zoom + position
+// (les réglages « ordi » sont directement sur le service, ceux du téléphone dans s.tel)
+const cadrageNeuf = () => ({ ajustement: "auto", ajusteManuel: false, zoom: 1, posX: 50, posY: 50 });
+function normaliserCadrage(c) {
+  c = c && typeof c === "object" ? c : {};
+  return {
+    ajustement: ["auto", "remplir", "entiere"].includes(c.ajustement) ? c.ajustement : "auto",
+    ajusteManuel: c.ajusteManuel === true,
+    zoom: borne(c.zoom, 1, 3, 1),
+    posX: borne(c.posX, 0, 100, 50),
+    posY: borne(c.posY, 0, 100, 50)
+  };
+}
 function etatDepartBase(maintenant) {
   return {
     version: 2,
     theme: "sombre",
     services: SERVICES_DEPART.map(s => ({
       id: uid(), nom: s.nom, url: s.url, couleur: s.couleur, image: "",
-      ajustement: "auto", ajusteManuel: false, zoom: 1, posX: 50, posY: 50,
+      ajustement: "auto", ajusteManuel: false, zoom: 1, posX: 50, posY: 50, tel: cadrageNeuf(),
       prix: 0, renouvellement: "", derniereOuverture: null, ajouteLe: maintenant
     })),
     liste: [],
@@ -876,6 +903,7 @@ function normaliser(d, strict) {
             zoom: borne(s.zoom, 1, 3, 1),
             posX: borne(s.posX, 0, 100, 50),
             posY: borne(s.posY, 0, 100, 50),
+            tel: normaliserCadrage(s.tel), // cadrage séparé pour le téléphone
             prix: Math.max(0, Math.round((Number(s.prix) || 0) * 100) / 100),
             renouvellement: dateValide(s.renouvellement) ? s.renouvellement : "",
             derniereOuverture: Number(s.derniereOuverture) || null,
@@ -958,18 +986,25 @@ function sauvegarder() {
 
 /* Configuration partagée intégrée à la page (null si le propriétaire n'a encore rien publié).
    On garde seulement ce qui est commun à tout le monde : rien de personnel. */
-function lireConfig() {
+function configDepuis(brut) {
   try {
-    const brut = JSON.parse(document.getElementById("config-partagee").textContent || "null");
     if (!brut || !Array.isArray(brut.services) || !brut.services.length) return null;
-    const services = normaliser({ services: brut.services }, false).services.map(s => ({
-      id: s.id, nom: s.nom, url: s.url, couleur: s.couleur, image: s.image,
-      ajustement: s.ajustement, zoom: s.zoom, posX: s.posX, posY: s.posY
-    }));
+    const services = normaliser({ services: brut.services }, false).services.map(partieCommune);
     return services.length ? { services, publieLe: Number(brut.publieLe) || null } : null;
   } catch (e) { return null; }
 }
-const CONFIG = lireConfig();
+// Ce qu'un service a de commun à tout le monde (pas de prix ni de dates perso)
+const partieCommune = s => ({
+  id: s.id, nom: s.nom, url: s.url, couleur: s.couleur, image: s.image,
+  ajustement: s.ajustement, ajusteManuel: s.ajusteManuel, zoom: s.zoom, posX: s.posX, posY: s.posY,
+  tel: { ...s.tel }
+});
+function lireConfig() {
+  try { return configDepuis(JSON.parse(document.getElementById("config-partagee").textContent || "null")); }
+  catch (e) { return null; }
+}
+// « let » : sur le site, la configuration peut arriver un peu plus tard (fichier config.json)
+let CONFIG = lireConfig();
 
 // Copie les services partagés dans l'état d'un visiteur, en gardant ses infos perso (prix, dates)
 function appliquerConfig(e) {
@@ -990,6 +1025,28 @@ function appliquerConfig(e) {
 let etat = charger();
 // Visiteur qui suit la configuration : on la met à jour à chaque visite
 if (CONFIG && etat.suitConfigPartagee && !etat.proprietaire) appliquerConfig(etat);
+
+/* Sur le site (Netlify), la configuration du propriétaire est dans le fichier config.json,
+   déposé sur GitHub à côté d'index.html. On le lit au démarrage. */
+const surLeSite = location.protocol.startsWith("http") && !/claude\.ai$|claudeusercontent\.com$/.test(location.hostname);
+if (!CONFIG && surLeSite) {
+  fetch("config.json", { cache: "no-cache" })
+    .then(r => r.ok ? r.json() : null)
+    .then(brut => {
+      const cfg = configDepuis(brut);
+      if (!cfg) return;
+      CONFIG = cfg;
+      if (etat.suitConfigPartagee && !etat.proprietaire) {
+        appliquerConfig(etat);
+        sauvegarder();
+        rendreAccueil();
+        if (vueActive === "parametres") rendreParametres();
+        rendreAbonnements();
+      }
+      rendrePartage();
+    })
+    .catch(() => { /* pas de fichier : on garde les services de départ */ });
+}
 
 /* =========================================================
    2. CAPACITÉS DE LA PAGE (demander à Claude, télécharger)
@@ -1184,6 +1241,13 @@ document.addEventListener("click", e => {
       et on en remplit le fond de la tuile : même « entière », l'image paraît pleine.
    2) En mode « auto », si la forme de l'image est trop différente de la tuile
       (ex. logo carré dans une case large), on l'affiche entière au lieu de la couper. */
+// Téléphone = même largeur que la mise en page « téléphone » (2 tuiles par ligne)
+const mqTel = window.matchMedia("(max-width: 760px)");
+const appareilActuel = () => mqTel.matches ? "tel" : "ordi";
+const cadrageDe = (s, app = appareilActuel()) => app === "tel" ? s.tel : s;
+// On passe d'un format à l'autre (rotation, fenêtre redimensionnée) : on redessine les tuiles
+mqTel.addEventListener("change", () => { rendreAccueil(); if (vueActive === "parametres") rendreParametres(); });
+
 const cacheCouleurs = new Map();
 function couleurBordImage(img) {
   try {
@@ -1206,13 +1270,14 @@ function couleurBordImage(img) {
 function appliquerCadrage(tuile, s) {
   const img = tuile.querySelector(".tuile-fond img");
   if (!img || !s) return;
+  const c = cadrageDe(s, tuile.dataset.appareil || appareilActuel()); // l'aperçu du recadrage force un appareil
   const faire = () => {
     const cle = s.id + ":" + s.image.length;
     if (!cacheCouleurs.has(cle)) cacheCouleurs.set(cle, couleurBordImage(img));
     const couleur = cacheCouleurs.get(cle);
     tuile.querySelector(".tuile-fond").style.background = couleur || "";
-    let entiere = s.ajustement === "entiere";
-    if (s.ajustement === "auto") {
+    let entiere = c.ajustement === "entiere";
+    if (c.ajustement === "auto") {
       const ratioImage = (img.naturalWidth || 1) / (img.naturalHeight || 1);
       const ratioTuile = (tuile.clientWidth || 1) / (tuile.clientHeight || 1);
       entiere = Math.abs(Math.log(ratioImage / ratioTuile)) > 0.15; // formes différentes : on ne coupe pas
@@ -1228,8 +1293,9 @@ let minuterieCadrage;
 window.addEventListener("resize", () => { clearTimeout(minuterieCadrage); minuterieCadrage = setTimeout(cadrerTout, 150); });
 
 // Style du recadrage d'une image (zoom et position)
-function styleImage(s) {
-  return `--z:${borne(s.zoom, 1, 3, 1)};--x:${borne(s.posX, 0, 100, 50)}%;--y:${borne(s.posY, 0, 100, 50)}%`;
+function styleImage(s, app) {
+  const c = cadrageDe(s, app);
+  return `--z:${borne(c.zoom, 1, 3, 1)};--x:${borne(c.posX, 0, 100, 50)}%;--y:${borne(c.posY, 0, 100, 50)}%`;
 }
 
 function rendreAccueil() {
@@ -1251,7 +1317,7 @@ function rendreAccueil() {
       const haut = s.image
         ? `<span class="tuile-fond"><img src="${s.image}" alt="" style="${styleImage(s)}"></span>`
         : `<span class="tuile-nom">${esc(s.nom)}</span>`;
-      const classes = s.image ? ` avec-image${s.ajustement === "entiere" ? " entiere" : ""}` : "";
+      const classes = s.image ? ` avec-image${cadrageDe(s).ajustement === "entiere" ? " entiere" : ""}` : "";
       return `
         <a class="tuile${classes}" href="${esc(s.url || "#parametres")}" ${s.url ? 'target="_blank" rel="noopener noreferrer"' : ""}
            data-id="${esc(s.id)}" style="--c:${esc(s.couleur)}" aria-label="Ouvrir ${esc(s.nom)}${i < 9 ? ", touche " + (i + 1) : ""}">
@@ -2118,7 +2184,17 @@ function rendreParametres() {
     : "Aucun titre masqué avec « Pas pour moi ».";
   $("#btn-exclus").hidden = !n;
 
-  $("#editeur-services").innerHTML = etat.services.map((s, i) => `
+  const ae = appareilEdition;
+  const choixAppareil = etat.services.some(s => s.image) ? `
+    <div class="choix-appareil">
+      <span class="muet">Cadrage des images pour :</span>
+      <span class="segment segment-petit" role="group" aria-label="Appareil à régler">
+        <button data-act="appareil" data-valeur="ordi" class="${ae === "ordi" ? "actif" : ""}">Ordi</button>
+        <button data-act="appareil" data-valeur="tel" class="${ae === "tel" ? "actif" : ""}">Téléphone</button>
+      </span>
+      <span class="muet petit">Le site choisit tout seul selon l'écran.</span>
+    </div>` : "";
+  $("#editeur-services").innerHTML = choixAppareil + etat.services.map((s, i) => `
     <div class="ligne-service" data-id="${esc(s.id)}">
       <div class="ls-tete">
         <span class="ls-num" title="Raccourci clavier">${i < 9 ? i + 1 : ""}</span>
@@ -2140,9 +2216,9 @@ function rendreParametres() {
         <button class="bouton-contour bouton-petit" data-act="image">${s.image ? "Changer l'image" : "Ajouter une image"}</button>
         ${s.image ? `
           <span class="segment segment-petit" role="group" aria-label="Affichage de l'image">
-            <button data-act="ajustement" data-valeur="auto" class="${s.ajustement === "auto" ? "actif" : ""}" title="L'app choisit le meilleur cadrage">Automatique</button>
-            <button data-act="ajustement" data-valeur="remplir" class="${s.ajustement === "remplir" ? "actif" : ""}">Remplir la case</button>
-            <button data-act="ajustement" data-valeur="entiere" class="${s.ajustement === "entiere" ? "actif" : ""}">Image entière</button>
+            <button data-act="ajustement" data-valeur="auto" class="${cadrageDe(s, ae).ajustement === "auto" ? "actif" : ""}" title="L'app choisit le meilleur cadrage">Automatique</button>
+            <button data-act="ajustement" data-valeur="remplir" class="${cadrageDe(s, ae).ajustement === "remplir" ? "actif" : ""}">Remplir la case</button>
+            <button data-act="ajustement" data-valeur="entiere" class="${cadrageDe(s, ae).ajustement === "entiere" ? "actif" : ""}">Image entière</button>
           </span>
           <button class="bouton-contour bouton-petit" data-act="recadrer" aria-expanded="${recadrageOuvert.has(s.id)}">${recadrageOuvert.has(s.id) ? "Fermer le recadrage" : "Recadrer"}</button>
           <button class="btn-retirer" data-act="retirer-image">Retirer l'image</button>` : ""}
@@ -2154,19 +2230,25 @@ function rendreParametres() {
 
 // Panneaux de recadrage ouverts (gardés quand la page se redessine)
 const recadrageOuvert = new Set();
+// Appareil qu'on règle dans Paramètres (au départ : celui qu'on tient dans les mains)
+let appareilEdition = appareilActuel();
 
 // Aperçu en direct (même rendu que la vraie tuile) + 3 curseurs
 function recadrageHTML(s) {
+  const ae = appareilEdition, c = cadrageDe(s, ae);
   return `
     <div class="recadrage">
-      <div class="tuile avec-image${s.ajustement === "entiere" ? " entiere" : ""}" data-id="${esc(s.id)}" style="--c:${esc(s.couleur)}" aria-hidden="true">
-        <span class="tuile-fond"><img src="${s.image}" alt="" style="${styleImage(s)}"></span>
+      <div class="apercu-appareil">
+      <div class="tuile avec-image apercu-${ae}${c.ajustement === "entiere" ? " entiere" : ""}" data-id="${esc(s.id)}" data-appareil="${ae}" style="--c:${esc(s.couleur)}" aria-hidden="true">
+        <span class="tuile-fond"><img src="${s.image}" alt="" style="${styleImage(s, ae)}"></span>
         <span class="tuile-pied"><span class="trait"></span><span class="tuile-meta">${esc(s.nom)}</span></span>
       </div>
+      <span class="muet petit">Aperçu ${ae === "tel" ? "téléphone" : "ordi"}</span>
+      </div>
       <div class="reglages">
-        <label>Zoom<input type="range" data-recad="zoom" min="1" max="3" step="0.05" value="${s.zoom}"><output>${Math.round(s.zoom * 100)} %</output></label>
-        <label>Gauche ↔ droite<input type="range" data-recad="posX" min="0" max="100" step="1" value="${s.posX}"><output>${Math.round(s.posX)}</output></label>
-        <label>Haut ↕ bas<input type="range" data-recad="posY" min="0" max="100" step="1" value="${s.posY}"><output>${Math.round(s.posY)}</output></label>
+        <label>Zoom<input type="range" data-recad="zoom" min="1" max="3" step="0.05" value="${c.zoom}"><output>${Math.round(c.zoom * 100)} %</output></label>
+        <label>Gauche ↔ droite<input type="range" data-recad="posX" min="0" max="100" step="1" value="${c.posX}"><output>${Math.round(c.posX)}</output></label>
+        <label>Haut ↕ bas<input type="range" data-recad="posY" min="0" max="100" step="1" value="${c.posY}"><output>${Math.round(c.posY)}</output></label>
         <div><button class="lien-discret" data-act="recadrage-zero">Remettre au centre</button></div>
       </div>
     </div>`;
@@ -2180,14 +2262,16 @@ $("#editeur-services").addEventListener("input", e => {
   const s = ligne && serviceParId(ligne.dataset.id);
   if (!s) return;
   const v = Number(e.target.value);
-  if (cle === "zoom") s.zoom = borne(v, 1, 3, 1);
-  if (cle === "posX") s.posX = borne(v, 0, 100, 50);
-  if (cle === "posY") s.posY = borne(v, 0, 100, 50);
-  e.target.nextElementSibling.textContent = cle === "zoom" ? Math.round(s.zoom * 100) + " %" : Math.round(v);
-  const style = styleImage(s);
+  const c = cadrageDe(s, appareilEdition); // on règle l'appareil choisi (ordi ou téléphone)
+  if (cle === "zoom") c.zoom = borne(v, 1, 3, 1);
+  if (cle === "posX") c.posX = borne(v, 0, 100, 50);
+  if (cle === "posY") c.posY = borne(v, 0, 100, 50);
+  e.target.nextElementSibling.textContent = cle === "zoom" ? Math.round(c.zoom * 100) + " %" : Math.round(v);
+  const style = styleImage(s, appareilEdition);
   ligne.querySelector(".recadrage img").setAttribute("style", style);
+  // La tuile de l'accueil change seulement si on règle l'appareil qu'on utilise
   const tuileAccueil = document.querySelector(`#tuiles .tuile[data-id="${CSS.escape(s.id)}"] img`);
-  if (tuileAccueil) tuileAccueil.setAttribute("style", style);
+  if (tuileAccueil && appareilEdition === appareilActuel()) tuileAccueil.setAttribute("style", style);
 });
 
 // Modification d'un champ : on sauvegarde sans redessiner (pour ne pas perdre le focus)
@@ -2220,6 +2304,11 @@ let serviceImageCible = null;
 $("#editeur-services").addEventListener("click", e => {
   const b = e.target.closest("[data-act]");
   if (!b) return;
+  if (b.dataset.act === "appareil") { // choix Ordi / Téléphone pour le cadrage
+    appareilEdition = b.dataset.valeur === "tel" ? "tel" : "ordi";
+    rendreParametres();
+    return;
+  }
   const id = b.closest(".ligne-service").dataset.id;
   const i = etat.services.findIndex(s => s.id === id);
   if (i < 0) return;
@@ -2235,11 +2324,12 @@ $("#editeur-services").addEventListener("click", e => {
     rendreParametres();
     return;
   } else if (act === "recadrage-zero") {
-    Object.assign(etat.services[i], { zoom: 1, posX: 50, posY: 50 });
+    Object.assign(cadrageDe(etat.services[i], appareilEdition), { zoom: 1, posX: 50, posY: 50 });
   } else if (act === "ajustement") {
     const v = b.dataset.valeur;
-    etat.services[i].ajustement = ["auto", "remplir", "entiere"].includes(v) ? v : "auto";
-    etat.services[i].ajusteManuel = v !== "auto";
+    const c = cadrageDe(etat.services[i], appareilEdition);
+    c.ajustement = ["auto", "remplir", "entiere"].includes(v) ? v : "auto";
+    c.ajusteManuel = v !== "auto";
   } else if (act === "haut" && i > 0) {
     [etat.services[i - 1], etat.services[i]] = [etat.services[i], etat.services[i - 1]];
   } else if (act === "bas" && i < etat.services.length - 1) {
@@ -2315,6 +2405,8 @@ $("#fichier-image").addEventListener("change", async e => {
     s.image = await preparerImage(f);
     Object.assign(s, { zoom: 1, posX: 50, posY: 50 });
     if (!s.ajusteManuel) s.ajustement = "auto"; // nouvelle image : cadrage automatique
+    Object.assign(s.tel, { zoom: 1, posX: 50, posY: 50 });
+    if (!s.tel.ajusteManuel) s.tel.ajustement = "auto";
     servicesModifies();
     if (!sauvegarder()) { s.image = avant; return; }
     rendreTout();
@@ -2326,7 +2418,7 @@ $("#fichier-image").addEventListener("change", async e => {
 
 $("#btn-ajout-service").addEventListener("click", () => {
   etat.services.push({
-    id: uid(), nom: "Nouveau service", url: "", couleur: "#9a9aa2", image: "", ajustement: "auto", ajusteManuel: false, zoom: 1, posX: 50, posY: 50,
+    id: uid(), nom: "Nouveau service", url: "", couleur: "#9a9aa2", image: "", ajustement: "auto", ajusteManuel: false, zoom: 1, posX: 50, posY: 50, tel: cadrageNeuf(),
     prix: 0, renouvellement: "", derniereOuverture: null, ajouteLe: Date.now()
   });
   servicesModifies();
@@ -2820,8 +2912,11 @@ function rendrePartage() {
   const proprio = $("#partage-proprio"), visiteur = $("#partage-visiteur");
   // Le bouton « Publier » s'affiche seulement si la page peut se republier
   // Un visiteur ne voit pas le bouton (sauf s'il clique « Je suis le propriétaire », ex. nouvel appareil)
-  proprio.hidden = !artifactPub || (!!CONFIG && !etat.proprietaire && !montrerProprio);
-  $("#btn-je-suis-proprio").hidden = !artifactPub || montrerProprio;
+  const estProprio = !CONFIG || etat.proprietaire || montrerProprio;
+  proprio.hidden = !artifactPub || !estProprio;
+  // Sur le site : le propriétaire exporte config.json (pas de republication possible ici)
+  $("#partage-site").hidden = !surLeSite || !!artifactPub || !estProprio;
+  $("#btn-je-suis-proprio").hidden = (!artifactPub && !surLeSite) || montrerProprio || estProprio;
   visiteur.hidden = !CONFIG || etat.proprietaire;
   if (CONFIG && !etat.proprietaire) {
     $("#texte-visiteur").textContent = etat.suitConfigPartagee
@@ -2832,7 +2927,7 @@ function rendrePartage() {
   $("#statut-partage").textContent = CONFIG && CONFIG.publieLe
     ? `Configuration publiée le ${fmtDateHeure.format(new Date(CONFIG.publieLe))}.`
     : (artifactPub ? "Aucune configuration publiée pour l'instant." : "");
-  $("#bloc-partage").hidden = proprio.hidden && visiteur.hidden && !$("#statut-partage").textContent;
+  $("#bloc-partage").hidden = proprio.hidden && $("#partage-site").hidden && visiteur.hidden && !$("#statut-partage").textContent;
 }
 
 /* Reconstruit la page d'origine (sans rien de ce que le navigateur ou claude.ai
@@ -2875,10 +2970,7 @@ async function publierConfig() {
   const config = {
     version: 1,
     publieLe: Date.now(),
-    services: etat.services.map(s => ({
-      id: s.id, nom: s.nom, url: s.url, couleur: s.couleur, image: s.image,
-      ajustement: s.ajustement, zoom: s.zoom, posX: s.posX, posY: s.posY
-    }))
+    services: etat.services.map(partieCommune)
   };
   b.disabled = true; b.textContent = "Publication…";
   try {
@@ -2904,6 +2996,22 @@ async function publierConfig() {
   }
 }
 $("#btn-publier-config").addEventListener("click", publierConfig);
+
+// Fichier config.json pour le site : seulement ce qui est commun (rien de personnel)
+$("#btn-exporter-config").addEventListener("click", () => {
+  const config = { version: 2, publieLe: Date.now(), services: etat.services.map(partieCommune) };
+  const blob = new Blob([JSON.stringify(config)], { type: "application/json" });
+  const a = document.createElement("a");
+  a.href = URL.createObjectURL(blob);
+  a.download = "config.json";
+  document.body.appendChild(a); a.click(); a.remove();
+  setTimeout(() => URL.revokeObjectURL(a.href), 2000);
+  // Cet appareil devient celui du propriétaire : il garde sa propre version
+  etat.proprietaire = true; etat.suitConfigPartagee = false;
+  sauvegarder(); rendrePartage();
+  const sansLien = etat.services.filter(s => !s.url).length;
+  toast("config.json téléchargé. Dépose-le sur GitHub." + (sansLien ? ` (${sansLien} service sans lien)` : ""));
+});
 $("#btn-je-suis-proprio").addEventListener("click", () => { montrerProprio = true; rendrePartage(); });
 $("#btn-suivre-config").addEventListener("click", () => {
   etat.suitConfigPartagee = true;
