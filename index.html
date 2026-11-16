@@ -1184,11 +1184,23 @@ function noterOuverture(id) {
 }
 
 // Utilisé par le clavier et la palette : on simule un clic sur un vrai lien
+/* Sur téléphone et tablette (écran tactile), on ouvre le service dans le MÊME onglet :
+   c'est ce qui permet à l'iPhone d'ouvrir directement l'app (Netflix, Crave…) sans
+   laisser un onglet Safari revenir par-dessus. Sur ordi : nouvel onglet, comme avant. */
+const ouvrirIci = () => window.matchMedia("(hover: none) and (pointer: coarse)").matches;
+document.addEventListener("click", e => {
+  const a = e.target.closest('a[target="_blank"]');
+  if (!a || !ouvrirIci()) return;
+  if (a.closest(".credits, .source-donnees")) return; // les crédits TMDB / JustWatch gardent un nouvel onglet
+  a.removeAttribute("target"); // enlevé juste avant que le navigateur suive le lien
+}, true);
+
 function ouvrirService(s) {
   if (!s || !s.url) { toast("Ce service n'a pas de lien. Ajoute-le dans Paramètres."); return; }
   noterOuverture(s.id);
   const a = document.createElement("a");
-  a.href = s.url; a.target = "_blank"; a.rel = "noopener noreferrer";
+  a.href = s.url; a.rel = "noopener noreferrer";
+  if (!ouvrirIci()) a.target = "_blank";
   document.body.appendChild(a);
   a.click();
   a.remove();
