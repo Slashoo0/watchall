@@ -4,6 +4,23 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Watchall — tout ce que tu veux regarder</title>
+<meta name="description" content="Tes plateformes de streaming, ta liste à regarder et tes abonnements au même endroit. Et où regarder n'importe quel film au Canada.">
+<!-- Icônes : onglet du navigateur, écran d'accueil du téléphone -->
+<link rel="icon" type="image/png" sizes="32x32" href="/img/favicon-32.png">
+<link rel="apple-touch-icon" href="/img/apple-touch-icon.png">
+<link rel="manifest" href="/manifest.webmanifest">
+<meta name="theme-color" content="#0b0b0c">
+<meta name="apple-mobile-web-app-title" content="Watchall">
+<!-- Aperçu quand on partage le lien (Messenger, iMessage, Discord…) -->
+<meta property="og:type" content="website">
+<meta property="og:url" content="https://watchall-ca.netlify.app/">
+<meta property="og:title" content="Watchall">
+<meta property="og:description" content="Tes plateformes, ta liste et tes abonnements au même endroit.">
+<meta property="og:image" content="https://watchall-ca.netlify.app/img/apercu.png">
+<meta property="og:image:width" content="1200">
+<meta property="og:image:height" content="630">
+<meta property="og:locale" content="fr_CA">
+<meta name="twitter:card" content="summary_large_image">
 <!-- Polices : Instrument Serif (titres élégants) + Inter (texte). Si elles ne chargent pas, on retombe sur Georgia / la police du système. -->
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -160,18 +177,20 @@ h2.titre-section { font-family: var(--serif); font-weight: 400; font-size: 28px;
   transition: transform .8s var(--ease);
 }
 .tuile.avec-image:hover .tuile-fond img { transform: scale(calc(var(--z, 1) * 1.05)); }
+/* L'image s'arrête au-dessus de la bande du bas : le texte et le trait ne passent plus sur le logo */
+.tuile.avec-image .tuile-fond { bottom: 46px; }
 /* Option « Image entière » : on voit toute l'image, sans la couper */
-.tuile.entiere .tuile-fond img { object-fit: contain; padding: 16px 20px 50px; }
+.tuile.entiere .tuile-fond img { object-fit: contain; padding: 14px 20px 10px; }
 /* Le fond de la tuile prend la couleur du bord du logo : la case paraît pleine */
 .tuile-fond { transition: background .4s var(--ease); }
 /* Bas de la tuile lisible par-dessus l'image grâce à un léger dégradé */
+/* Bande du bas : sous le logo, jamais par-dessus */
 .tuile.avec-image .tuile-pied {
-  position: relative; margin-top: auto;
-  padding: 44px 22px 18px;
-  background: linear-gradient(to bottom, transparent, rgba(0,0,0,.75));
+  position: absolute; left: 0; right: 0; bottom: 0; height: 46px;
+  padding: 0 20px; justify-content: center; gap: 7px;
+  background: var(--surface); border-top: 1px solid var(--ligne);
 }
-.tuile.avec-image .tuile-meta { color: rgba(255,255,255,.82); }
-.tuile.avec-image .tuile-meta.vieux { color: #f0c27a; }
+.tuile.avec-image .tuile-meta { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .tuile-pied { display: flex; flex-direction: column; gap: 12px; }
 /* La seule touche de couleur : une fine ligne qui s'allonge au survol */
 .trait {
@@ -309,6 +328,11 @@ h2.titre-section { font-family: var(--serif); font-weight: 400; font-size: 28px;
    ========================================================= */
 .bloc { padding: 32px 0; border-top: 1px solid var(--ligne); }
 /* Comptes */
+.choix-date { display: flex; gap: 8px; }
+.choix-date select:first-child { max-width: 90px; }
+.abo-prix-btn { background: none; border: 0; color: inherit; font: inherit; cursor: pointer; padding: 2px 0; border-bottom: 1px dashed var(--ligne-forte); }
+.abo-prix-btn:hover { color: var(--texte); border-bottom-color: var(--texte); }
+.abo-prix input { width: 110px; text-align: right; }
 .form-compte { display: grid; gap: 10px; max-width: 360px; margin-top: 4px; }
 .form-compte label { display: grid; gap: 6px; font-size: 13px; color: var(--muet); }
 .form-compte .erreur { color: var(--avert); font-size: 13px; min-height: 1em; margin: 0; }
@@ -373,8 +397,10 @@ input[type="color"]::-moz-color-swatch { border: 0; border-radius: 50%; }
 .apercu-appareil { display: flex; flex-direction: column; align-items: center; gap: 8px; }
 .recadrage .tuile.apercu-ordi { width: 250px; max-width: 100%; aspect-ratio: 250 / 174; }
 .recadrage .tuile.apercu-tel { width: 168px; aspect-ratio: 168 / 130; }
-.recadrage .tuile.apercu-tel.entiere .tuile-fond img { padding: 10px 12px 38px; }
-.recadrage .tuile.apercu-tel .tuile-pied { padding: 36px 16px 14px; }
+.recadrage .tuile.apercu-tel.entiere .tuile-fond img { padding: 8px 12px 6px; }
+.recadrage .tuile.apercu-tel .tuile-pied { padding: 0 14px; height: 40px; gap: 6px; }
+.recadrage .tuile.apercu-tel .tuile-fond { bottom: 40px; }
+.recadrage .tuile.apercu-tel .tuile-meta { font-size: 12px; }
 .choix-appareil { display: flex; align-items: center; flex-wrap: wrap; gap: 10px 14px; margin: 0 0 16px; }
 .petit { font-size: 12px; }
 .recadrage .tuile:hover { transform: none; }
@@ -556,7 +582,8 @@ textarea.champ { min-height: 140px; font-family: var(--mono); font-size: 12px; r
    ========================================================= */
 @media (max-width: 760px) {
   .entete { padding: 20px 20px 0; gap: 12px; flex-wrap: wrap; }
-  .nav { order: 3; flex-basis: 100%; margin: 0 -6px; }
+  .nav { order: 3; flex-basis: 100%; margin: 0 -8px; gap: 0; justify-content: space-between; }
+  .nav a { padding: 8px 8px; font-size: 15px; }
   .btn-recherche { margin-left: auto; }
   .btn-recherche kbd { display: none; }
   main { padding: 0 20px 80px; }
@@ -568,8 +595,10 @@ textarea.champ { min-height: 140px; font-family: var(--mono); font-size: 12px; r
   .tuile { min-height: 132px; padding: 18px; }
   .tuile-nom { font-size: 26px; }
   .tuile-logo img { max-height: 40px; max-width: 75%; }
-  .tuile.avec-image .tuile-pied { padding: 36px 16px 14px; }
-  .tuile.entiere .tuile-fond img { padding: 10px 12px 38px; } /* petite case : moins de marge autour du logo */
+  .tuile.avec-image .tuile-pied { padding: 0 14px; height: 40px; gap: 6px; }
+  .tuile.avec-image .tuile-fond { bottom: 40px; }
+  .tuile.avec-image .tuile-meta { font-size: 12px; }
+  .tuile.entiere .tuile-fond img { padding: 8px 12px 6px; } /* petite case : moins de marge autour du logo */
   .form-ajout { grid-template-columns: 1fr 1fr; }
   .form-ajout .bouton-plein { grid-column: 1 / -1; }
   .totaux { grid-template-columns: 1fr; }
@@ -587,7 +616,9 @@ textarea.champ { min-height: 140px; font-family: var(--mono); font-size: 12px; r
   .lien-raccourci { display: none; }
   .voile { padding-top: 4vh; }
 }
-@media (hover: none) { .lien-raccourci { display: none; } }
+@media (max-width: 400px) { .nav a { padding: 7px 7px; font-size: 14.5px; } }
+@media (max-width: 340px) { .nav a { padding: 6px 5px; font-size: 13px; } }
+@media (hover: none) { .lien-raccourci, .palette-pied { display: none; } }
 
 /* Respecte le réglage « réduire les animations » du système */
 @media (prefers-reduced-motion: reduce) {
@@ -611,7 +642,7 @@ textarea.champ { min-height: 140px; font-family: var(--mono); font-size: 12px; r
   </button>
 </header>
 <p class="bandeau" id="bandeau-stockage" hidden>
-  Attention : ici, rien n'est sauvegardé (images, liste, prix). Tu regardes probablement un aperçu. Ouvre ton tableau de bord dans l'artifact « Watchall » pour garder tes données.
+  Attention : ton navigateur bloque la sauvegarde (navigation privée?). Tes changements seront perdus en fermant la page. Crée un compte dans Paramètres pour les garder en ligne.
 </p>
 
 <main>
@@ -745,7 +776,7 @@ textarea.champ { min-height: 140px; font-family: var(--mono); font-size: 12px; r
 
     <div class="bloc">
       <h2 class="titre-section">Services</h2>
-      <p class="muet">L'ordre ici est celui des tuiles (et des touches 1 à 9). Les changements sont gardés dès que tu quittes un champ. L'image remplace le nom dans la tuile.</p>
+      <p class="muet" id="texte-services">L'ordre ici est celui des tuiles (et des touches 1 à 9). Les changements sont gardés dès que tu quittes un champ. L'image remplace le nom dans la tuile.</p>
       <div id="editeur-services"></div>
       <input type="file" id="fichier-image" accept="image/png,image/jpeg,image/svg+xml,image/webp" hidden>
       <button class="bouton-contour" id="btn-ajout-service">+ Ajouter un service</button>
@@ -776,7 +807,7 @@ textarea.champ { min-height: 140px; font-family: var(--mono); font-size: 12px; r
     <details class="bloc bloc-avance" id="bloc-tmdb">
       <summary><h2 class="titre-section">Avancé : clé API TMDB <span class="badge">optionnel</span></h2></summary>
       <p class="note-serveur" id="note-serveur" hidden>✓ Sur ce site, le mode Découvrir marche déjà pour tout le monde, sans clé. Une clé perso ici est seulement utile en dépannage.</p>
-      <p class="muet">Tu n'as pas besoin de ça pour utiliser Watchall. Sert seulement au mode Découvrir quand Watchall n'est pas ouvert dans Claude (par exemple sur Netlify) : vraies idées de films et de séries, avec leur disponibilité réelle au Canada. Colle le « Jeton d'accès en lecture à l'API » (recommandé) ou la « Clé API » de ton compte TMDB. Elle reste seulement dans ce navigateur.</p>
+      <p class="muet">Tu n'as pas besoin de ça pour utiliser Watchall. Une clé perso sert seulement si les idées de films ou « Où regarder » ne marchent pas. Colle le « Jeton d'accès en lecture à l'API » (recommandé) ou la « Clé API » de ton compte TMDB. Elle reste seulement dans ce navigateur.</p>
       <div class="rangee" style="margin-top:0">
         <input class="champ" type="password" id="tmdb-cle" placeholder="Colle ta clé ici" style="max-width:420px" autocomplete="off" aria-label="Clé API TMDB">
         <button class="bouton-contour" id="btn-tmdb">Enregistrer</button>
@@ -833,7 +864,7 @@ textarea.champ { min-height: 140px; font-family: var(--mono); font-size: 12px; r
 
     <div class="bloc">
       <h2 class="titre-section">Tout remettre à zéro</h2>
-      <p class="muet">Efface ta liste, tes notes, tes prix, tes images et tes services modifiés, puis remet les services de départ.</p>
+      <p class="muet" id="texte-reset">Efface ta liste, tes notes, tes prix, tes images et tes services modifiés, puis remet les services de départ.</p>
       <button class="bouton-contour danger" id="btn-reset">Réinitialiser</button>
     </div>
   </section>
@@ -952,7 +983,7 @@ function etatDepartBase(maintenant) {
     services: SERVICES_DEPART.map(s => ({
       id: uid(), nom: s.nom, url: s.url, app: appParDefaut(s.nom), couleur: s.couleur, image: "",
       ajustement: "auto", ajusteManuel: false, zoom: 1, posX: 50, posY: 50, tel: cadrageNeuf(),
-      prix: 0, renouvellement: "", derniereOuverture: null, ajouteLe: maintenant
+      prix: 0, formule: formuleParDefaut(s.nom), renouvellement: "", derniereOuverture: null, ajouteLe: maintenant
     })),
     liste: [],
     exclus: [],               // titres marqués « Pas pour moi »
@@ -981,6 +1012,11 @@ function urlPropre(u) {
 }
 const couleurValide = c => /^#[0-9a-f]{6}$/i.test(String(c || ""));
 const dateValide = d => /^\d{4}-\d{2}-\d{2}$/.test(String(d || ""));
+// Formule d'un service : payé chaque mois, chaque année, ou gratuit / pas abonné (YouTube au départ)
+const FORMULES = ["mois", "annee", "gratuit"];
+const formuleParDefaut = nom => /^youtube$/i.test(String(nom || "").trim()) ? "gratuit" : "mois";
+// Coût ramené par mois (un abonnement annuel compte pour 1/12 par mois)
+const coutMensuel = s => s.formule === "gratuit" ? 0 : s.formule === "annee" ? (s.prix || 0) / 12 : (s.prix || 0);
 // Une image sauvegardée doit être une image PNG ou JPEG encodée (rien d'autre n'est accepté)
 const imageValide = i => typeof i === "string" && i.length < 1500000 && /^data:image\/(png|jpeg);base64,[A-Za-z0-9+/=]+$/.test(i);
 // Garde un nombre entre min et max (sinon la valeur par défaut)
@@ -1018,6 +1054,8 @@ function normaliser(d, strict) {
             posY: borne(s.posY, 0, 100, 50),
             tel: normaliserCadrage(s.tel), // cadrage séparé pour le téléphone
             prix: Math.max(0, Math.round((Number(s.prix) || 0) * 100) / 100),
+            // Anciennes données sans formule : mensuel, sauf YouTube sans prix (gratuit)
+            formule: FORMULES.includes(s.formule) ? s.formule : (Number(s.prix) > 0 ? "mois" : formuleParDefaut(s.nom)),
             renouvellement: dateValide(s.renouvellement) ? s.renouvellement : "",
             derniereOuverture: Number(s.derniereOuverture) || null,
             ajouteLe: Number(s.ajouteLe) || Date.now(),
@@ -1143,6 +1181,7 @@ function appliquerConfig(e) {
     return {
       ...sc,
       prix: local.prix || 0,
+      formule: FORMULES.includes(local.formule) ? local.formule : formuleParDefaut(sc.nom),
       renouvellement: local.renouvellement || "",
       derniereOuverture: local.derniereOuverture || null,
       ajouteLe: local.ajouteLe || maintenant
@@ -1197,7 +1236,13 @@ promesseServeur.then(ok => {
   serveurTmdb = ok;
   if ($("#panneau-mode")) rendrePanneau();               // fenêtre « On regarde quoi ? » ouverte : on la met à jour
   const note = $("#note-serveur"); if (note) note.hidden = !ok;   // petite note dans Paramètres
+  majBlocTmdb();
 });
+// Sur le site, la clé du serveur suffit : le bloc « clé TMDB » est caché (sauf pour le propriétaire ou s'il y a déjà une clé)
+function majBlocTmdb() {
+  const bloc = $("#bloc-tmdb");
+  if (bloc) bloc.hidden = surLeSite && serveurTmdb === true && !etat.tmdbCle && !proprioOk;
+}
 const decouvrirPossible = () => !!etat.tmdbCle || serveurTmdb === true || claudeDispo !== false || serveurTmdb === null;
 const promesseTelechargement = capacite("downloads");
 
@@ -1231,6 +1276,18 @@ function fmtDuree(min) {
   const h = Math.floor(min / 60), m = min % 60;
   return m ? `${h} h ${String(m).padStart(2, "0")}` : `${h} h`;
 }
+// Lit un prix tapé à la québécoise ou à l'américaine : « 17,99 », « 17.99 », « 17,99 $ », « 1 234,50 »
+// Renvoie le nombre (0 si vide) ou null si on ne comprend pas.
+function lirePrix(texte) {
+  let t = String(texte || "").replace(/[\s\u00a0\u202f$]/g, "").replace(/CAD$/i, "");
+  if (!t) return 0;
+  // Virgule ET point : le dernier des deux est la décimale (« 1.234,50 » ou « 1,234.50 »)
+  if (t.includes(",") && t.includes(".")) t = t.lastIndexOf(",") > t.lastIndexOf(".") ? t.replace(/\./g, "").replace(",", ".") : t.replace(/,/g, "");
+  else t = t.replace(",", ".");
+  if (!/^\d{1,5}(\.\d{1,2})?$/.test(t)) return null;
+  return Math.round(Number(t) * 100) / 100;
+}
+
 // Catégorie de durée utilisée par les filtres
 function categorieDuree(min) {
   if (!min) return "";
@@ -1245,13 +1302,26 @@ function ajouterMois(an, mois0, jour, k) {
   const dernier = new Date(a, m + 1, 0).getDate();
   return new Date(a, m, Math.min(jour, dernier));
 }
-// Prochaine date de renouvellement (mensuel) à partir de la date entrée
-function prochainRenouvellement(iso) {
-  if (!dateValide(iso)) return null;
+// Prochaine date de renouvellement à partir de la date entrée (tous les mois, ou tous les 12 mois)
+// Jour et mois choisis dans les listes -> date de départ (dans le passé, pour que le calcul avance)
+function dateRenouvellement(jour, mois, formule) {
+  jour = Number(jour); if (!jour) return "";
+  const an = new Date().getFullYear() - 1;
+  if (formule === "annee") {
+    mois = Number(mois) || 1;
+    const dernier = new Date(an, mois, 0).getDate();
+    return `${an}-${String(mois).padStart(2, "0")}-${String(Math.min(jour, dernier)).padStart(2, "0")}`;
+  }
+  return `${an}-01-${String(jour).padStart(2, "0")}`; // janvier a 31 jours : tous les jours sont permis
+}
+const MOIS_NOMS = ["janvier", "février", "mars", "avril", "mai", "juin", "juillet", "août", "septembre", "octobre", "novembre", "décembre"];
+function prochainRenouvellement(iso, formule = "mois") {
+  if (!dateValide(iso) || formule === "gratuit") return null;
   const [a, m, j] = iso.split("-").map(Number);
+  const pas = formule === "annee" ? 12 : 1;
   const aujourdhui = debutAujourdhui();
   let k = 0, d = ajouterMois(a, m - 1, j, 0);
-  while (d < aujourdhui && k < 1200) { k++; d = ajouterMois(a, m - 1, j, k); }
+  while (d < aujourdhui && k < 1200) { k += pas; d = ajouterMois(a, m - 1, j, k); }
   return d;
 }
 
@@ -1450,7 +1520,16 @@ function couleurBordImage(img) {
       if (px[i + 3] < 200) { transparents++; continue; }
       r += px[i]; g += px[i + 1]; b += px[i + 2]; n++;
     }
-    if (!n || transparents > n) return null; // logo transparent : on garde le fond normal
+    if (!n || transparents > n) {
+      // Logo transparent : s'il a beaucoup de parties foncées (ex. « You » de YouTube), un fond clair le rend lisible
+      let opaques = 0, fonces = 0;
+      for (let i = 0; i < px.length; i += 4) {
+        if (px[i + 3] < 200) continue;
+        opaques++;
+        if (0.2126 * px[i] + 0.7152 * px[i + 1] + 0.0722 * px[i + 2] < 70) fonces++;
+      }
+      return opaques && fonces / opaques > 0.12 ? "#f1f1ef" : null;
+    }
     return `rgb(${Math.round(r / n)}, ${Math.round(g / n)}, ${Math.round(b / n)})`;
   } catch (e) { return null; }
 }
@@ -1623,6 +1702,8 @@ $("#form-ajout").addEventListener("submit", e => {
   const f = e.target;
   const titre = f.titre.value.trim();
   if (!titre) return;
+  const existant = etat.liste.find(t => sansAccents(t.titre) === sansAccents(titre));
+  if (existant) { toast(`« ${existant.titre} » est déjà dans ta liste.`); f.titre.select(); return; }
   etat.liste.push({
     id: uid(),
     titre: titre.slice(0, 120),
@@ -1666,8 +1747,14 @@ function gererActionItem(e) {
     const n = Number(el.dataset.note);
     t.note = t.note === n ? 0 : n; // recliquer sur la même étoile enlève la note
   } else if (act === "suppr") {
+    const position = etat.liste.indexOf(t);
     etat.liste = etat.liste.filter(x => x.id !== t.id);
-    toast(`« ${t.titre} » retiré`);
+    toastAction(`« ${t.titre} » retiré.`, "Annuler", () => {
+      if (etat.liste.some(x => x.id === t.id)) return;
+      etat.liste.splice(Math.min(position, etat.liste.length), 0, t);
+      sauvegarder(); rendreListe(); rendreAccueil();
+      toast(`« ${t.titre} » est revenu dans ta liste.`);
+    });
   } else if (act === "ouvrir") {
     noterOuverture(t.serviceId);
     return; // le lien s'ouvre tout seul
@@ -1941,6 +2028,32 @@ const GENRES_TMDB = {
 const GENRE_DEPUIS_TMDB = { 28: "action", 12: "action", 10759: "action", 35: "comédie", 18: "drame", 27: "horreur", 53: "thriller", 9648: "thriller", 878: "science-fiction", 10765: "science-fiction", 14: "science-fiction", 16: "animation", 99: "documentaire", 10749: "romance", 80: "policier" };
 // L'ambiance choisie devient des genres quand aucun genre n'est coché
 const GENRES_AMBIANCE = { leger: ["comédie", "animation", "romance"], intense: ["action", "thriller"], reflechir: ["drame", "documentaire", "science-fiction"], rire: ["comédie"], peur: ["horreur", "thriller"] };
+// « Avec qui » : genres qui marchent bien selon le nombre de personnes (seul = aucune contrainte)
+const GENRES_AVEC_QUI = { deux: ["romance", "comédie", "drame", "thriller", "policier"], groupe: ["comédie", "action", "horreur", "animation", "science-fiction"] };
+const SANS_GENRES_AVEC_QUI = { groupe: ["documentaire", "drame"] }; // moins bons à plusieurs
+// Mots reconnus dans « Une envie précise » (sans intelligence artificielle : une liste de mots)
+const MOTS_GENRES = [
+  [/dr[oô]le|rire|com[ée]die|marrant|humour/, "comédie"],
+  [/peur|horreur|effrayant|flippant|terrifiant/, "horreur"],
+  [/action|bagarre|explosion/, "action"],
+  [/romanti|romance|amour/, "romance"],
+  [/anim[ée]|dessin|animation/, "animation"],
+  [/documentaire|\bdocu/, "documentaire"],
+  [/policier|enqu[eê]te|crime|polar|d[ée]tective/, "policier"],
+  [/science.?fiction|sci.?fi|espace|futur|robot/, "science-fiction"],
+  [/thriller|suspense|tendu/, "thriller"],
+  [/drame|triste|[ée]mouvant/, "drame"]
+];
+// Lit l'envie : titre de référence (« comme … »), genres et durée voulus
+function lireEnvie(texte) {
+  const t = sansAccents(texte || "");
+  const m = String(texte || "").match(/comme\s+(.+?)(?:\s+mais\b|\s+en\s|\s+avec\s|,|$)/i);
+  const genres = MOTS_GENRES.filter(([re]) => re.test(t)).map(([, g]) => g);
+  const duree = /plus court|moins long|pas trop long|court|rapide/.test(t) ? "court" : /plus long|long/.test(t) ? "long" : "";
+  // Sans « comme », on cherche le texte comme titre seulement s'il ne contient pas de mots reconnus
+  const titre = m ? m[1].trim() : (genres.length || duree ? "" : String(texte || "").trim());
+  return { titre, genres, duree };
+}
 
 let ctlTmdb = null;
 let fournisseursCA = null; // liste des plateformes connues de TMDB au Canada (gardée en mémoire)
@@ -1989,18 +2102,36 @@ async function chargerFournisseurs() {
 }
 
 // Durée voulue -> bornes de durée TMDB (un épisode pour une série)
+// « Moins de 30 min » = 30 min max · « Environ 1 h » = un épisode de 31 à 75 min, ou un film de 1 h 45 max
+// « 2 h et plus » = un film de 2 h ou plus (pour une série, on peut enchaîner les épisodes : pas de limite)
+const LIMITES_DUREE = {
+  court: { movie: [0, 30], tv: [0, 30] },
+  moyen: { movie: [45, 105], tv: [31, 75] },
+  long:  { movie: [120, 999], tv: [0, 999] }
+};
 function bornesDuree(temps, type) {
-  if (temps === "court") return { "with_runtime.lte": 30 };
-  if (temps === "moyen") return type === "tv" ? { "with_runtime.gte": 31, "with_runtime.lte": 75 } : { "with_runtime.lte": 80 };
-  if (temps === "long") return type === "movie" ? { "with_runtime.gte": 90 } : {};
-  return {};
+  const l = (LIMITES_DUREE[temps] || {})[type];
+  if (!l) return {};
+  const b = {};
+  if (l[0] > 0) b["with_runtime.gte"] = l[0];
+  if (l[1] < 999) b["with_runtime.lte"] = l[1];
+  return b;
+}
+// Vérifie la vraie durée d'un titre (0 = durée inconnue : on garde le titre)
+function dureeOk(min, type, temps, extra) {
+  if (!min) return true;
+  const l = (LIMITES_DUREE[temps] || {})[type];
+  if (l && (min < l[0] || min > l[1])) return false;
+  if (extra && extra.max && min > extra.max) return false;
+  if (extra && extra.min && min < extra.min) return false;
+  return true;
 }
 
 // Point de départ pour « des titres comme… » : l'envie précise, sinon un titre que tu as adoré
 async function trouverGraine(texte) {
   if (texte) {
-    const m = texte.match(/comme\s+(.+?)(?:\s+mais\b|\s+en\s|,|$)/i);
-    const requete = (m ? m[1] : texte).trim();
+    const requete = lireEnvie(texte).titre;
+    if (!requete) return null;
     const res = await appelTmdb("/search/multi", { query: requete, language: "fr-CA", include_adult: false });
     const trouve = (res.results || []).find(r => r.media_type === "movie" || r.media_type === "tv");
     return trouve ? { type: trouve.media_type, id: trouve.id, depuisTexte: true } : null;
@@ -2033,27 +2164,53 @@ async function decouvrirTmdb() {
   const ids = [...serviceDuFournisseur.keys()];
 
   const types = f.type === "film" ? ["movie"] : f.type === "serie" ? ["tv"] : ["movie", "tv"];
-  const nomsGenres = f.genres.length ? f.genres : (GENRES_AMBIANCE[f.ambiance] || []);
+  const envie = lireEnvie(f.texte);
+  // Genres voulus : ceux cochés, sinon ceux de l'envie, sinon l'ambiance, sinon « avec qui »
+  let nomsGenres = f.genres.length ? f.genres : envie.genres.length ? envie.genres : (GENRES_AMBIANCE[f.ambiance] || []);
+  const avecQui = GENRES_AVEC_QUI[f.avecQui] || [];
+  if (avecQui.length && !f.genres.length && !envie.genres.length) {
+    const communs = nomsGenres.filter(g => avecQui.includes(g));
+    nomsGenres = nomsGenres.length ? (communs.length ? communs : nomsGenres) : avecQui;
+  }
+  const exclusAvecQui = (SANS_GENRES_AVEC_QUI[f.avecQui] || []).filter(g => !nomsGenres.includes(g));
   let candidats = [];
   let avertissement = "";
 
   const graine = await trouverGraine(f.texte);
+  // « Plus court / plus long » que le titre de référence
+  let limiteEnvie = null;
+  if (envie.duree) {
+    let ref = 0;
+    if (graine) {
+      try { const g = await appelTmdb(`/${graine.type}/${graine.id}`, { language: "fr-CA" }); ref = graine.type === "movie" ? (g.runtime || 0) : ((g.episode_run_time || [])[0] || 0); }
+      catch (e) { if (e && e.code === "cancelled") throw e; }
+    }
+    limiteEnvie = envie.duree === "court" ? { max: ref ? ref - 10 : 100 } : { min: ref ? ref + 10 : 120 };
+  }
+  const idsGenres = type => new Set(nomsGenres.map(n => GENRES_TMDB[type][n]).filter(Boolean));
+  const genreOk = c => { const voulus = idsGenres(c.media); return !voulus.size || (c.genre_ids || []).some(id => voulus.has(id)); };
+
   if (graine && types.includes(graine.type)) {
-    // « Comme ce titre » : recommandations TMDB (disponibilité vérifiée plus bas)
+    // « Comme ce titre » : recommandations TMDB, filtrées par genre (la durée est vérifiée plus bas)
     const rec = await appelTmdb(`/${graine.type}/${graine.id}/recommendations`, { language: "fr-CA" });
-    candidats = (rec.results || []).map(r => ({ ...r, media: graine.type }));
-  } else if (f.texte) {
+    candidats = (rec.results || []).map(r => ({ ...r, media: graine.type })).filter(c => !f.genres.length || genreOk(c));
+  } else if (f.texte && envie.titre) {
     avertissement = "Je n'ai pas reconnu de titre dans ton envie, voici des idées selon tes filtres.";
   }
-  if (!candidats.length) {
+  const recommandes = candidats.length;
+  {
     for (const type of types) {
       const params = {
         watch_region: "CA", with_watch_providers: ids.join("|"), with_watch_monetization_types: "flatrate",
         language: "fr-CA", sort_by: "popularity.desc", include_adult: false,
         "vote_count.gte": type === "movie" ? 100 : 50, ...bornesDuree(f.temps, type)
       };
-      const genres = [...new Set(nomsGenres.map(n => GENRES_TMDB[type][n]).filter(Boolean))];
+      const genres = [...idsGenres(type)];
       if (genres.length) params.with_genres = genres.join("|");
+      const sans = [...new Set(exclusAvecQui.map(n => GENRES_TMDB[type][n]).filter(id => id && !genres.includes(id)))];
+      if (sans.length) params.without_genres = sans.join(",");
+      if (limiteEnvie && limiteEnvie.max && type === "movie") params["with_runtime.lte"] = Math.min(params["with_runtime.lte"] || 999, limiteEnvie.max);
+      if (limiteEnvie && limiteEnvie.min && type === "movie") params["with_runtime.gte"] = Math.max(params["with_runtime.gte"] || 0, limiteEnvie.min);
       if (f.langue) params.with_original_language = f.langue;
       const page1 = await appelTmdb(`/discover/${type}`, { ...params, page: 1 });
       let res = page1.results || [];
@@ -2067,21 +2224,25 @@ async function decouvrirTmdb() {
   }
 
   // On enlève ce que tu connais déjà ou qu'on vient de te montrer
+  // (les titres « comme … » passent avant les idées générales)
   const vus = new Set(dejaProposes.map(sansAccents));
-  candidats = melanger(candidats.filter(c => {
-    const t = c.title || c.name || "";
-    return t && !titreConnu(t) && !vus.has(sansAccents(t));
-  }));
+  const garder = c => { const t = c.title || c.name || ""; return t && !titreConnu(t) && !vus.has(sansAccents(t)); };
+  const deja = new Set();
+  const unique = c => { const k = c.media + c.id; if (deja.has(k)) return false; deja.add(k); return true; };
+  candidats = melanger(candidats.slice(0, recommandes).filter(garder))
+    .concat(melanger(candidats.slice(recommandes).filter(garder)))
+    .filter(unique);
 
   // Détails + disponibilité réelle au Canada, jusqu'à avoir 3 titres sur tes plateformes
   const resultats = [];
-  for (const c of candidats.slice(0, 12)) {
+  for (const c of candidats.slice(0, 16)) {
     if (resultats.length >= 3) break;
     const d = await appelTmdb(`/${c.media}/${c.id}`, { language: "fr-CA", append_to_response: "watch/providers" });
     const offres = (((d["watch/providers"] || {}).results || {}).CA || {}).flatrate || [];
     const offre = offres.find(o => serviceDuFournisseur.has(o.provider_id));
     if (!offre) continue;
     const duree = c.media === "movie" ? (d.runtime || 0) : ((d.episode_run_time || [])[0] || (d.last_episode_to_air || {}).runtime || 0);
+    if (!dureeOk(duree, c.media, f.temps, limiteEnvie)) continue; // trop court ou trop long pour ce que tu as demandé
     const date = d.release_date || d.first_air_date || "";
     const affiche = typeof d.poster_path === "string" && /^\/[\w.-]+$/.test(d.poster_path) ? IMG_TMDB + d.poster_path : "";
     const resume = texteCourt(d.overview || "", 400);
@@ -2270,7 +2431,7 @@ function afficherProposition() {
   if (!zone || !tempsChoisi) return;
   const t = proposer(tempsChoisi);
   if (!t) {
-    const vide = !etat.liste.some(t => t.statut !== "vu");
+    const vide = !etat.liste.some(t => t.statut !== "fini");
     zone.innerHTML = decouvrirPossible()
       ? `<div class="vide">Rien dans ta liste pour ce temps-là.
           <button data-action="mode-decouvrir">Voir des idées avec Découvrir</button>.</div>`
@@ -2308,7 +2469,6 @@ function ouvrirAide() {
       <li><span>Ma liste</span><span><kbd>L</kbd></span></li>
       <li><span>Abonnements</span><span><kbd>B</kbd></span></li>
       <li><span>Paramètres</span><span><kbd>P</kbd></span></li>
-      <li><span>Changer de thème</span><span><kbd>T</kbd></span></li>
       <li><span>Cette aide</span><span><kbd>?</kbd></span></li>
       <li><span>Fermer une fenêtre ou un message</span><span><kbd>Échap</kbd></span></li>
     </ul>`);
@@ -2318,16 +2478,16 @@ function ouvrirAide() {
    10. ABONNEMENTS
    ========================================================= */
 function rendreAbonnements() {
-  const total = etat.services.reduce((somme, s) => somme + (s.prix || 0), 0);
+  const total = etat.services.reduce((somme, s) => somme + coutMensuel(s), 0);
   $("#total-mois").textContent = fmtArgent.format(total);
   $("#total-annee").textContent = fmtArgent.format(total * 12);
 
   // Tri par prochaine date de renouvellement (ceux sans date à la fin)
-  const lignes = etat.services.map(s => ({ s, prochain: prochainRenouvellement(s.renouvellement) }))
+  const lignes = etat.services.map(s => ({ s, prochain: prochainRenouvellement(s.renouvellement, s.formule) }))
     .sort((a, b) => (a.prochain ? a.prochain.getTime() : Infinity) - (b.prochain ? b.prochain.getTime() : Infinity));
 
   $("#liste-abos").innerHTML = lignes.length ? lignes.map(({ s, prochain }) => {
-    let renouv = "Date de renouvellement à entrer dans Paramètres";
+    let renouv = s.formule === "gratuit" ? "Gratuit ou pas abonné" : "Date de renouvellement à entrer dans Paramètres";
     if (prochain) {
       const dans = Math.round((prochain - debutAujourdhui()) / JOUR);
       const quand = dans === 0 ? "aujourd'hui" : dans === 1 ? "demain" : `dans ${dans} jours`;
@@ -2335,16 +2495,22 @@ function rendreAbonnements() {
     }
     const ouvert = s.derniereOuverture ? "Ouvert " + ilYa(s.derniereOuverture) : "Jamais ouvert depuis l'ajout";
     const jours = joursSansOuverture(s);
-    const avert = jours > 30
-      ? `<div class="avert-doux"><span>●</span><span>Pas ouvert depuis ${jours} jours. ${s.prix > 0 ? `Ça te coûte ${fmtArgent.format(s.prix)} par mois : est-ce que ça vaut encore la peine?` : "Est-ce que tu l'utilises encore?"}</span></div>`
+    const avert = jours > 30 && s.formule !== "gratuit"
+      ? `<div class="avert-doux"><span>●</span><span>Pas ouvert ici depuis ${jours} jours. ${coutMensuel(s) > 0 ? `Ça te coûte ${fmtArgent.format(coutMensuel(s))} par mois : est-ce que ça vaut encore la peine?` : "Est-ce que tu l'utilises encore?"}</span></div>`
       : "";
+    const prixTexte = s.formule === "annee"
+      ? `${fmtArgent.format(s.prix)} / an <span class="muet">(${fmtArgent.format(s.prix / 12)} / mois)</span>`
+      : `${fmtArgent.format(s.prix)} / mois`;
+    const prixHTML = s.formule === "gratuit"
+      ? '<span class="muet">Gratuit</span>'
+      : `<button class="abo-prix-btn" data-abo-prix="${esc(s.id)}" title="Modifier le prix">${s.prix > 0 ? prixTexte : '<span class="muet">Entrer le prix</span>'}</button>`;
     return `
       <li class="abo">
         <span class="point" style="--c:${esc(s.couleur)}"></span>
         <div class="abo-corps">
           <div class="abo-ligne">
             <span class="abo-nom">${esc(s.nom)}</span>
-            <span class="abo-prix">${s.prix > 0 ? fmtArgent.format(s.prix) + " / mois" : '<span class="muet">Prix à entrer</span>'}</span>
+            <span class="abo-prix">${prixHTML}</span>
           </div>
           <div class="abo-details">${esc(renouv)} · ${esc(ouvert)}</div>
           ${avert}
@@ -2352,21 +2518,53 @@ function rendreAbonnements() {
       </li>`;
   }).join("") : `<li class="vide">Aucun service.</li>`;
 
-  const sansPrix = etat.services.filter(s => !s.prix).length;
+  const sansPrix = etat.services.filter(s => !s.prix && s.formule !== "gratuit").length;
   $("#note-abos").textContent = sansPrix
-    ? `${sansPrix} service${sansPrix > 1 ? "s n'ont" : " n'a"} pas encore de prix. Entre-les dans Paramètres pour un total exact (taxes incluses si tu veux le vrai montant payé).`
-    : "Montants en dollars canadiens. Le renouvellement est calculé chaque mois à partir de la date entrée.";
+    ? `${sansPrix} service${sansPrix > 1 ? "s n'ont" : " n'a"} pas encore de prix. Clique sur « Entrer le prix » (taxes incluses si tu veux le vrai montant payé). Un service gratuit se règle dans Paramètres.`
+    : "Montants en dollars canadiens. Clique sur un prix pour le changer. Les dates et les formules (mois, année, gratuit) se règlent dans Paramètres.";
 }
+
+// Clic sur un prix dans Abonnements : on le modifie sur place
+$("#liste-abos").addEventListener("click", e => {
+  const b = e.target.closest("[data-abo-prix]");
+  if (!b) return;
+  const s = serviceParId(b.dataset.aboPrix);
+  if (!s) return;
+  const champ = document.createElement("input");
+  champ.className = "champ-petit"; champ.inputMode = "decimal"; champ.maxLength = 12;
+  champ.placeholder = "0,00"; champ.value = s.prix ? String(s.prix).replace(".", ",") : "";
+  champ.setAttribute("aria-label", `Prix de ${s.nom} ${s.formule === "annee" ? "par année" : "par mois"}`);
+  b.replaceWith(champ); champ.focus(); champ.select();
+  let fini = false;
+  const valider = garder => {
+    if (fini) return; fini = true;
+    if (garder) {
+      const prix = lirePrix(champ.value);
+      if (prix === null) toast("Prix pas compris. Écris-le comme 17,99.");
+      else { s.prix = prix; sauvegarder(); }
+    }
+    rendreAbonnements(); rendreParametres();
+  };
+  champ.addEventListener("keydown", ev => { if (ev.key === "Enter") { ev.preventDefault(); valider(true); } else if (ev.key === "Escape") { ev.stopPropagation(); valider(false); } });
+  champ.addEventListener("blur", () => valider(true));
+});
 
 /* =========================================================
    11. PARAMÈTRES
    ========================================================= */
 function rendreParametres() {
+  $("#texte-reset").textContent = compte
+    ? "Efface ta liste, tes notes et tes prix, sur cet appareil et dans ton compte (donc sur tous tes appareils). Ton compte, lui, reste ouvert."
+    : "Efface ta liste, tes notes, tes prix, tes images et tes services modifiés, puis remet les services de départ.";
   document.querySelectorAll("[data-theme-choix]").forEach(b =>
     b.classList.toggle("actif", b.dataset.themeChoix === etat.theme));
   $("#tmdb-cle").value = etat.tmdbCle || "";
   if (etat.tmdbCle) $("#bloc-tmdb").open = true; // déjà une clé : on montre le bloc ouvert
   $("#note-serveur").hidden = serveurTmdb !== true;
+  majBlocTmdb();
+  $("#texte-services").textContent = surLeSite && !proprioOk
+    ? "Entre ce que tu paies et quand ça se renouvelle : ça sert à la page Abonnements. Les noms, logos et liens sont gérés par le propriétaire de Watchall. Tout est gardé dès que tu quittes un champ."
+    : "L'ordre ici est celui des tuiles (et des touches 1 à 9). Les changements sont gardés dès que tu quittes un champ. L'image remplace le nom dans la tuile.";
   const n = etat.exclus.length;
   $("#texte-exclus").textContent = n
     ? `Titres masqués avec « Pas pour moi » : ${n}. Ils ne te seront plus proposés.`
@@ -2399,8 +2597,7 @@ function rendreParametres() {
       <div class="ls-champs">
         ${mod ? `<label>Lien<input class="champ" data-champ="url" type="url" value="${esc(s.url)}" placeholder="https://…"></label>
         <label>Lien de l'app (iPhone)<input class="champ" data-champ="app" type="text" autocapitalize="off" autocorrect="off" spellcheck="false" value="${esc(s.app || "")}" placeholder="ex. nflx:// (vide = site web)"></label>` : ""}
-        <label>Prix mensuel ($ CA)<input class="champ" data-champ="prix" type="number" min="0" step="0.01" value="${s.prix || ""}" placeholder="0,00"></label>
-        <label>Renouvellement<input class="champ" data-champ="renouvellement" type="date" value="${esc(s.renouvellement)}"></label>
+        ${champsAbonnement(s)}
       </div>
       ${images ? `<div class="ls-image">
         <span class="apercu-image">${s.image ? `<img src="${s.image}" alt="Image de ${esc(s.nom)}">` : "Aucune"}</span>
@@ -2417,6 +2614,24 @@ function rendreParametres() {
       ${images && s.image && recadrageOuvert.has(s.id) ? recadrageHTML(s) : ""}
     </div>`; }).join("") || `<div class="vide" style="margin-bottom:12px">Aucun service.</div>`;
   cadrerTout(); // l'aperçu du recadrage suit le même cadrage que l'accueil
+}
+
+// Champs perso d'un service : formule, prix, jour de renouvellement (et mois si annuel)
+function champsAbonnement(s) {
+  const [, mm, jj] = dateValide(s.renouvellement) ? s.renouvellement.split("-").map(Number) : [0, 0, 0];
+  const jours = `<option value="">—</option>` + Array.from({ length: 31 }, (_, i) => `<option value="${i + 1}" ${jj === i + 1 ? "selected" : ""}>${i + 1}</option>`).join("");
+  const mois = MOIS_NOMS.map((n, i) => `<option value="${i + 1}" ${mm === i + 1 ? "selected" : ""}>${n}</option>`).join("");
+  const formule = `<label>Abonnement<select class="champ" data-champ="formule">
+      <option value="mois" ${s.formule === "mois" ? "selected" : ""}>Payé chaque mois</option>
+      <option value="annee" ${s.formule === "annee" ? "selected" : ""}>Payé chaque année</option>
+      <option value="gratuit" ${s.formule === "gratuit" ? "selected" : ""}>Gratuit / pas abonné</option>
+    </select></label>`;
+  if (s.formule === "gratuit") return formule;
+  const prix = `<label>Prix ${s.formule === "annee" ? "par année" : "par mois"} ($ CA)<input class="champ" data-champ="prix" type="text" inputmode="decimal" maxlength="12" value="${s.prix ? String(s.prix).replace(".", ",") : ""}" placeholder="0,00" autocomplete="off"></label>`;
+  const date = s.formule === "annee"
+    ? `<label>Renouvellement chaque année le<span class="choix-date"><select class="champ" data-champ="jour" aria-label="Jour">${jours}</select><select class="champ" data-champ="mois" aria-label="Mois">${mois}</select></span></label>`
+    : `<label>Renouvellement chaque mois le<select class="champ" data-champ="jour" aria-label="Jour du mois">${jours}</select></label>`;
+  return formule + prix + date;
 }
 
 // Panneaux de recadrage ouverts (gardés quand la page se redessine)
@@ -2483,9 +2698,23 @@ $("#editeur-services").addEventListener("change", e => {
     s.app = lienAppValide(v) || ""; e.target.value = s.app;
     if (v.trim() && !s.app) toast("Ce lien d'app ne semble pas valide (ex. nflx://).");
   } else if (champ === "prix") {
-    s.prix = Math.max(0, Math.round((Number(v) || 0) * 100) / 100);
-  } else if (champ === "renouvellement") {
-    s.renouvellement = dateValide(v) ? v : "";
+    const prix = lirePrix(v);
+    if (prix === null) { toast("Prix pas compris. Écris-le comme 17,99."); e.target.value = s.prix ? String(s.prix).replace(".", ",") : ""; return; }
+    s.prix = prix;
+    e.target.value = prix ? String(prix).replace(".", ",") : "";
+  } else if (champ === "formule") {
+    if (FORMULES.includes(v)) {
+      const [, mm, jj] = dateValide(s.renouvellement) ? s.renouvellement.split("-").map(Number) : [0, 0, 0];
+      s.formule = v;
+      s.renouvellement = jj ? dateRenouvellement(jj, mm, v) : "";
+    }
+    servicesModifies(); sauvegarder(); rendreParametres(); rendreAccueil(); rendreAbonnements();
+    return; // on redessine : les champs changent selon la formule
+  } else if (champ === "jour" || champ === "mois") {
+    const l = e.target.closest(".ligne-service");
+    const jour = l.querySelector('[data-champ="jour"]').value;
+    const mois = l.querySelector('[data-champ="mois"]') ? l.querySelector('[data-champ="mois"]').value : 0;
+    s.renouvellement = dateRenouvellement(jour, mois, s.formule);
   } else if (champ === "couleur") {
     if (couleurValide(v)) s.couleur = v;
   }
@@ -2690,9 +2919,12 @@ $("#fichier-import").addEventListener("change", e => {
 let importEnAttente = null;
 $("#btn-importer").addEventListener("click", e => {
   const b = e.currentTarget;
+  if (importEnAttente && importEnAttente.texte !== $("#zone-import").value) {
+    importEnAttente = null; b.textContent = "Importer"; // le texte a changé : on revalide le nouveau
+  }
   if (importEnAttente) {
     const cle = etat.tmdbCle;
-    etat = importEnAttente;
+    etat = importEnAttente.donnees;
     if (!etat.tmdbCle) etat.tmdbCle = cle; // on garde ta clé actuelle
     importEnAttente = null;
     b.textContent = "Importer";
@@ -2703,10 +2935,13 @@ $("#btn-importer").addEventListener("click", e => {
     return;
   }
   try {
-    const donnees = normaliser(JSON.parse($("#zone-import").value), true);
-    importEnAttente = donnees;
-    b.textContent = `Remplacer par ${donnees.services.length} services et ${donnees.liste.length} titres?`;
-    setTimeout(() => { if (importEnAttente === donnees) { importEnAttente = null; b.textContent = "Importer"; } }, 6000);
+    const texte = $("#zone-import").value;
+    const donnees = normaliser(JSON.parse(texte), true);
+    const attente = { donnees, texte };
+    importEnAttente = attente;
+    const n = donnees.liste.length, ns = donnees.services.length;
+    b.textContent = `Remplacer par ${ns} service${ns > 1 ? "s" : ""} et ${n} titre${n > 1 ? "s" : ""}?`;
+    setTimeout(() => { if (importEnAttente === attente) { importEnAttente = null; b.textContent = "Importer"; } }, 6000);
   } catch (err) {
     toast(err instanceof SyntaxError ? "Ce texte n'est pas du JSON valide." : err.message);
   }
@@ -2742,14 +2977,15 @@ let resetArme = false;
 $("#btn-reset").addEventListener("click", e => {
   const b = e.currentTarget;
   if (!resetArme) {
-    resetArme = true; b.textContent = "Clique encore pour tout effacer";
+    resetArme = true;
+    b.textContent = compte ? "Clique encore : ça efface aussi ton compte sur tous tes appareils" : "Clique encore pour tout effacer";
     setTimeout(() => { resetArme = false; b.textContent = "Réinitialiser"; }, 4000);
     return;
   }
   resetArme = false; b.textContent = "Réinitialiser";
   etat = etatDepart();
   appliquerTheme(); sauvegarder(); rendreTout();
-  toast("Tout est remis à zéro.");
+  toast(compte ? "Tout est remis à zéro, aussi dans ton compte." : "Tout est remis à zéro.");
 });
 
 /* =========================================================
@@ -2999,6 +3235,7 @@ function actionOu(e) {
     fermerModale();
     if (s) ouvrirService(s);
   } else if (b.dataset.ou === "liste") {
+    if (etat.liste.some(t => sansAccents(t.titre) === sansAccents(r.titre))) { b.outerHTML = `<span class="muet">Déjà dans ta liste ✓</span>`; return true; }
     const mien = r.abonnement.find(p => p.service);
     etat.liste.push({
       id: uid(), titre: r.titre, serviceId: mien ? mien.service.id : "", statut: "a-voir",
@@ -3019,7 +3256,8 @@ function ouvrirPalette() {
   const champ = $("#palette-champ");
   champ.value = "";
   filtrerPalette();
-  setTimeout(() => champ.focus(), 30);
+  champ.focus(); // tout de suite : les lettres tapées vont dans le champ
+  setTimeout(() => { if (paletteOuverte() && document.activeElement !== champ) champ.focus(); }, 30);
 }
 function fermerPalette() {
   $("#palette").classList.remove("ouvert");
@@ -3067,6 +3305,10 @@ document.addEventListener("keydown", e => {
     else if ($("#retour").classList.contains("visible")) fermerRetour();
     return;
   }
+  // Palette ouverte mais champ pas encore actif : on y envoie la lettre au lieu de la perdre
+  if (paletteOuverte() && e.target !== $("#palette-champ") && e.key.length === 1 && !e.ctrlKey && !e.metaKey && !e.altKey) {
+    e.preventDefault(); const c = $("#palette-champ"); c.focus(); c.value += e.key; filtrerPalette(); return;
+  }
   if (paletteOuverte() || modaleOuverte()) return;
   // On ignore les touches tapées dans un champ texte
   if (e.target.closest && e.target.closest("input, textarea, select, [contenteditable]")) return;
@@ -3084,8 +3326,7 @@ document.addEventListener("keydown", e => {
     a: () => allerA("accueil"),
     l: () => allerA("liste"),
     b: () => allerA("abonnements"),
-    p: () => allerA("parametres"),
-    t: () => basculerTheme()
+    p: () => allerA("parametres")
   };
   const action = lettres[e.key.toLowerCase()];
   if (action && !e.shiftKey) { e.preventDefault(); action(); }
@@ -3496,7 +3737,7 @@ function donneesPerso() {
   return {
     version: 1,
     liste: etat.liste, exclus: etat.exclus, filtresDecouvrir: etat.filtresDecouvrir, theme: etat.theme,
-    services: etat.services.map(s => ({ id: s.id, prix: s.prix, renouvellement: s.renouvellement, derniereOuverture: s.derniereOuverture })),
+    services: etat.services.map(s => ({ id: s.id, prix: s.prix, formule: s.formule, renouvellement: s.renouvellement, derniereOuverture: s.derniereOuverture })),
     persos: etat.services.filter(s => s.perso).map(s => ({ ...s, image: "" }))
   };
 }
@@ -3507,13 +3748,14 @@ function appliquerDonneesPerso(d) {
   const persos = Array.isArray(d.persos) ? d.persos.filter(p => p && p.perso) : [];
   const services = etat.services.filter(s => !s.perso).map(s => {
     const i = infos.get(s.id);
-    return i ? { ...s, prix: i.prix, renouvellement: i.renouvellement, derniereOuverture: i.derniereOuverture } : s;
+    return i ? { ...s, prix: i.prix, formule: i.formule, renouvellement: i.renouvellement, derniereOuverture: i.derniereOuverture } : s;
   }).concat(persos);
   const cle = etat.tmdbCle;
   etat = normaliser({ ...etat, liste: d.liste, exclus: d.exclus, filtresDecouvrir: d.filtresDecouvrir, theme: d.theme || etat.theme, services }, false);
   etat.tmdbCle = cle; // la clé TMDB perso reste sur l'appareil
   if (CONFIG && suitLePartage()) appliquerConfig(etat);
   signatureSync = JSON.stringify(donneesPerso());
+  retenirBase(etat.liste);
   try { localStorage.setItem(CLE_STOCKAGE, JSON.stringify(etat)); } catch (e) { /* rien */ }
   appliquerTheme(); rendreTout();
 }
@@ -3522,10 +3764,48 @@ function retenirCompte(c) {
   compte = { identifiant: c.identifiant, nom: c.nom, majLe: majServeur };
   ecrireLocal(CLE_COMPTE, JSON.stringify(compte));
 }
-function oublierCompte() {
+function oublierCompte(viderAppareil = false) {
   jeton = ""; compte = null; majServeur = 0; signatureSync = "";
+  clearTimeout(minuterieSync);
   ecrireLocal(CLE_JETON, null); ecrireLocal(CLE_COMPTE, null);
+  if (viderAppareil) {
+    // La liste, les notes et les prix de la personne restent dans son compte, pas sur cet appareil
+    // (sinon la prochaine personne qui utilise l'appareil les verrait, ou les recevrait dans son compte).
+    const theme = etat.theme, cle = etat.tmdbCle;
+    etat = etatDepart();
+    etat.theme = theme; etat.tmdbCle = cle;
+    try { localStorage.setItem(CLE_STOCKAGE, JSON.stringify(etat)); } catch (e) { /* rien */ }
+    appliquerTheme();
+  }
   rendreTout();
+}
+
+// Dernière liste envoyée au compte (ou reçue) : sert de point de comparaison en cas de conflit
+let baseSync = [];
+function retenirBase(liste) { try { baseSync = JSON.parse(JSON.stringify(liste || [])); } catch (e) { baseSync = []; } }
+// Fusion : ce qui a changé ici depuis la base gagne ; ce qui a changé ailleurs aussi ; les nouveaux titres des deux côtés restent
+function fusionnerListes(base, ici, ailleurs) {
+  const parId = l => new Map(l.filter(t => t && t.id).map(t => [t.id, t]));
+  const B = parId(base), I = parId(ici), A = parId(ailleurs);
+  // Comparaison qui ne dépend pas de l'ordre des champs
+  const canon = o => JSON.stringify(o, Object.keys(o || {}).sort());
+  const pareil = (x, y) => canon(x) === canon(y);
+  const resultat = [];
+  for (const [id, a] of A) {
+    const i = I.get(id), b = B.get(id);
+    if (i) resultat.push(b && pareil(i, b) ? a : i);        // modifié ici -> version d'ici
+    else if (!b || !pareil(a, b)) resultat.push(a);           // nouveau ou modifié ailleurs -> on garde
+    // sinon : supprimé ici et pas touché ailleurs -> reste supprimé
+  }
+  for (const [id, i] of I) {
+    if (A.has(id)) continue;
+    const b = B.get(id);
+    if (!b || !pareil(i, b)) resultat.push(i);                // nouveau ici (ou modifié ici après une suppression ailleurs)
+    // sinon : supprimé ailleurs et pas touché ici -> reste supprimé
+  }
+  // Même ordre qu'ici autant que possible
+  const ordre = new Map(ici.map((t, k) => [t.id, k]));
+  return resultat.sort((x, y) => (ordre.has(x.id) ? ordre.get(x.id) : -1) - (ordre.has(y.id) ? ordre.get(y.id) : -1));
 }
 
 function planifierSync() {
@@ -3542,21 +3822,21 @@ async function envoyerSync() {
   if (signature === signatureSync) { etatSync = "✓ À jour sur tous tes appareils"; afficherEtatSync(); return; }
   const { statut, corps } = await appelCompte("sauver", { donnees, base: majServeur });
   if (statut === 200) {
-    majServeur = corps.majLe; signatureSync = signature; retenirCompte(compte);
+    majServeur = corps.majLe; signatureSync = signature; retenirCompte(compte); retenirBase(donnees.liste);
     etatSync = "✓ À jour sur tous tes appareils"; afficherEtatSync();
   } else if (statut === 409) {
     // Un autre appareil a enregistré pendant ce temps : on part de sa version
     // et on y ajoute les titres ajoutés ici entre-temps, puis on renvoie le tout
     majServeur = corps.majLe || 0; retenirCompte(compte);
     const srv = corps.donnees || {};
-    const ids = new Set((Array.isArray(srv.liste) ? srv.liste : []).map(t => t && t.id));
-    const ajoutes = donnees.liste.filter(t => !ids.has(t.id));
+    const liste = fusionnerListes(baseSync, donnees.liste, Array.isArray(srv.liste) ? srv.liste : []);
     appliquerDonneesPerso({
       ...srv,
-      liste: (Array.isArray(srv.liste) ? srv.liste : []).concat(ajoutes),
+      liste,
       exclus: [...new Set([...(Array.isArray(srv.exclus) ? srv.exclus : []), ...donnees.exclus])]
     });
-    if (ajoutes.length) { signatureSync = ""; planifierSync(); }
+    retenirBase(Array.isArray(srv.liste) ? srv.liste : []); // le serveur a cette version-là
+    if (JSON.stringify(liste) !== JSON.stringify(srv.liste || [])) { signatureSync = ""; planifierSync(); }
     toast("Ta liste a été mise à jour avec celle de ton autre appareil.");
   } else if (statut === 401) {
     oublierCompte(); toast("Ta session a expiré. Reconnecte-toi dans Paramètres.");
@@ -3575,7 +3855,10 @@ async function rafraichirCompte() {
   majServeur = corps.majLe || 0;
   retenirCompte(corps);
   if (corps.donnees && (nouveau || !signatureSync)) appliquerDonneesPerso(corps.donnees);
-  else { rendreAccueil(); rendreCompte(); }
+  else {
+    if (corps.donnees && Array.isArray(corps.donnees.liste)) retenirBase(corps.donnees.liste); // version du serveur = point de comparaison
+    rendreAccueil(); rendreCompte();
+  }
   if (!corps.donnees) envoyerSync(); // compte tout neuf : on y met ce qui est déjà sur l'appareil
 }
 
@@ -3629,7 +3912,18 @@ if (surLeSite) {
     jeton = rep.jeton; ecrireLocal(CLE_JETON, jeton);
     majServeur = rep.majLe || 0; retenirCompte(rep);
     f.reset();
-    if (rep.donnees) { appliquerDonneesPerso(rep.donnees); toast(`Bon retour, ${rep.nom} ! Ta liste est récupérée.`); }
+    if (rep.donnees) {
+      // Titres ajoutés sur cet appareil avant la connexion : on les ajoute à ceux du compte
+      const duCompte = Array.isArray(rep.donnees.liste) ? rep.donnees.liste : [];
+      const connus = new Set(duCompte.map(t => t && sansAccents(t.titre)));
+      const ici = etat.liste.filter(t => !connus.has(sansAccents(t.titre)));
+      appliquerDonneesPerso({ ...rep.donnees, liste: ici.concat(duCompte) });
+      retenirBase(duCompte);
+      if (ici.length) { signatureSync = ""; planifierSync(); }
+      toast(ici.length
+        ? `Bon retour, ${rep.nom} ! Ta liste est récupérée, avec ${ici.length} titre${ici.length > 1 ? "s" : ""} de cet appareil en plus.`
+        : `Bon retour, ${rep.nom} ! Ta liste est récupérée.`);
+    }
     else { signatureSync = ""; await envoyerSync(); rendreTout(); toast(`Bienvenue, ${rep.nom} ! Ton compte est créé.`); }
   });
   $("#form-nom").addEventListener("submit", async e => {
@@ -3651,8 +3945,8 @@ if (surLeSite) {
   $("#btn-deconnexion").addEventListener("click", async () => {
     await envoyerSync(); // on enregistre ce qui reste avant de partir
     await appelCompte("deconnexion");
-    oublierCompte();
-    toast("Tu es déconnecté sur cet appareil.");
+    oublierCompte(true);
+    toast("Tu es déconnecté. Ta liste reste dans ton compte, pas sur cet appareil.");
   });
   $("#btn-supprimer-compte").addEventListener("click", () => { $("#form-supprimer").hidden = false; $("#form-supprimer").motDePasse.focus(); });
   $("#form-supprimer").addEventListener("submit", async e => {
@@ -3660,7 +3954,7 @@ if (surLeSite) {
     const { statut, corps } = await appelCompte("supprimer", { motDePasse: e.target.motDePasse.value });
     if (statut !== 200) { toast(messageCompte(corps)); return; }
     e.target.reset(); e.target.hidden = true;
-    oublierCompte();
+    oublierCompte(true);
     toast("Ton compte et ses données en ligne sont supprimés.");
   });
   $("#form-reinit").addEventListener("submit", async e => {
