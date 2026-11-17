@@ -5,6 +5,9 @@
    - La connexion donne un jeton aléatoire ; le serveur garde seulement
      l'empreinte du jeton, pas le jeton lui-même.
    - Chaque compte garde ses données perso (liste, notes, prix, réglages).
+   - On s'inscrit avec son courriel. Le courriel n'apparaît jamais dans le nom
+     de la case de stockage : on y met seulement son empreinte.
+   - Les anciens comptes créés avec un nom d'utilisateur marchent encore.
    Tout passe par POST /.netlify/functions/compte?action=…
    ========================================================= */
 import { getStore } from "@netlify/blobs";
@@ -30,8 +33,17 @@ const egal = (a, b) => {
   return timingSafeEqual(x, y);
 };
 
-// Identifiant : 3 à 30 caractères, lettres minuscules, chiffres, point, tiret, trait bas
-const identifiantOk = v => typeof v === "string" && /^[a-z0-9._-]{3,30}$/.test(v.trim().toLowerCase()) ? v.trim().toLowerCase() : null;
+// Courriel : forme simple « quelquechose@domaine.ext », 254 caractères max, en minuscules
+const courrielOk = v => {
+  if (typeof v !== "string") return null;
+  const c = v.trim().toLowerCase();
+  return c.length <= 254 && /^[^\s@<>]+@[^\s@<>]+\.[^\s@<>]{2,}$/.test(c) ? c : null;
+};
+// Ancien format (comptes créés avant le courriel) : nom d'utilisateur de 3 à 30 caractères
+const ancienIdOk = v => typeof v === "string" && /^[a-z0-9._-]{3,30}$/.test(v.trim().toLowerCase()) ? v.trim().toLowerCase() : null;
+// Où est rangé le compte : empreinte du courriel, ou ancien nom d'utilisateur
+const idDuCourriel = c => "e_" + createHash("sha256").update(c).digest("hex").slice(0, 40);
+const idDeConnexion = v => { const c = courrielOk(v); return c ? idDuCourriel(c) : ancienIdOk(v); };
 const motDePasseOk = v => typeof v === "string" && v.length >= 8 && v.length <= 200;
 const nomOk = v => typeof v === "string" && v.trim().length >= 1 && v.trim().length <= 30 ? v.trim().replace(/[<>]/g, "") : null;
 
@@ -73,7 +85,7 @@ async function compteDuJeton(store, req) {
   if (!compte || !(compte.sessions || []).includes(h)) return null;
   return { compte, h };
 }
-const profil = c => ({ identifiant: c.id, nom: c.nom, majLe: c.majLe || 0, donnees: c.donnees || null });
+const profil = c => ({ identifiant: c.courriel || c.id, nom: c.nom, majLe: c.majLe || 0, donnees: c.donnees || null });
 
 export default async (req) => {
   if (req.method !== "POST") return reponse(405, { erreur: "methode" });
@@ -87,13 +99,14 @@ export default async (req) => {
 
   // ---------- Créer un compte ----------
   if (action === "inscription") {
-    const id = identifiantOk(d.identifiant), nom = nomOk(d.nom);
-    if (!id) return reponse(400, { erreur: "identifiant_invalide" });
+    const courriel = courrielOk(d.identifiant), nom = nomOk(d.nom);
+    if (!courriel) return reponse(400, { erreur: "courriel_invalide" });
+    const id = idDuCourriel(courriel);
     if (!nom) return reponse(400, { erreur: "nom_invalide" });
     if (!motDePasseOk(d.motDePasse)) return reponse(400, { erreur: "mot_de_passe_court" });
-    if (await store.get(cleCompte(id), { type: "json" })) return reponse(409, { erreur: "identifiant_pris" });
+    if (await store.get(cleCompte(id), { type: "json" })) return reponse(409, { erreur: "courriel_pris" });
     const { sel, hash } = await hacher(d.motDePasse);
-    const compte = { id, nom, sel, hash, creeLe: Date.now(), majLe: 0, donnees: null, sessions: [], echecs: 0, bloqueJusqua: 0 };
+    const compte = { id, courriel, nom, sel, hash, creeLe: Date.now(), majLe: 0, donnees: null, sessions: [], echecs: 0, bloqueJusqua: 0 };
     const jeton = await ouvrirSession(store, compte);
     await store.setJSON(cleCompte(id), compte);
     return reponse(200, { jeton, ...profil(compte) });
@@ -101,7 +114,7 @@ export default async (req) => {
 
   // ---------- Se connecter ----------
   if (action === "connexion") {
-    const id = identifiantOk(d.identifiant);
+    const id = idDeConnexion(d.identifiant);
     const compte = id && await store.get(cleCompte(id), { type: "json" });
     if (compte && compte.bloqueJusqua > Date.now()) return reponse(429, { erreur: "trop_d_essais" });
     const ok = compte && typeof d.motDePasse === "string" && await verifier(d.motDePasse, compte);
@@ -124,7 +137,7 @@ export default async (req) => {
   if (action === "reinitialiser") {
     const admin = process.env.WATCHALL_ADMIN || "";
     if (!admin || !egal(req.headers.get("x-watchall-proprio") || "", admin)) { await pause(800); return reponse(401, { erreur: "refuse" }); }
-    const id = identifiantOk(d.identifiant);
+    const id = idDeConnexion(d.identifiant);
     const compte = id && await store.get(cleCompte(id), { type: "json" });
     if (!compte) return reponse(404, { erreur: "compte_introuvable" });
     if (!motDePasseOk(d.nouveau)) return reponse(400, { erreur: "mot_de_passe_court" });
