@@ -723,6 +723,22 @@ textarea.champ { min-height: 140px; font-family: var(--mono); font-size: 12px; r
         <p class="muet">Pour que tout le monde voie tes services, logos et cadrages (ordi et téléphone) : télécharge le fichier <strong>config.json</strong>, puis dépose-le sur GitHub à côté d'index.html. Tes prix, ta liste, tes notes et ta clé ne sont pas dedans. Refais-le chaque fois que tu changes un logo ou un cadrage.</p>
         <button class="bouton-plein" id="btn-exporter-config">Télécharger config.json</button>
       </div>
+      <!-- Sur le site : une seule configuration, gardée sur le serveur Netlify -->
+      <div id="partage-serveur" hidden>
+        <div id="ps-visiteur">
+          <p class="muet">Les logos, les cadrages et les liens des services sont gérés par le propriétaire de Watchall : tout le monde voit la même chose. Tes prix, ta liste et tes notes restent à toi.</p>
+          <button class="lien-discret" id="btn-ouvrir-proprio">Je suis le propriétaire</button>
+          <form id="form-proprio" class="rangee" hidden style="margin-top:8px">
+            <input class="champ" type="password" id="mdp-proprio" placeholder="Mot de passe propriétaire" autocomplete="current-password" style="max-width:280px" aria-label="Mot de passe propriétaire">
+            <button class="bouton-plein" type="submit" id="btn-deverrouiller">Déverrouiller</button>
+          </form>
+        </div>
+        <div id="ps-proprio" hidden>
+          <p class="muet">✓ <strong>Mode propriétaire.</strong> Tes changements de logos, de cadrages, de noms, de liens et d'ordre des services sont enregistrés pour tout le monde, quelques secondes après chaque modification.</p>
+          <p class="statut-partage" id="etat-pub"></p>
+          <button class="lien-discret" id="btn-quitter-proprio">Quitter le mode propriétaire sur cet appareil</button>
+        </div>
+      </div>
       <!-- Pour les visiteurs -->
       <div id="partage-visiteur" hidden>
         <p class="muet" id="texte-visiteur"></p>
@@ -923,7 +939,8 @@ function normaliser(d, strict) {
             prix: Math.max(0, Math.round((Number(s.prix) || 0) * 100) / 100),
             renouvellement: dateValide(s.renouvellement) ? s.renouvellement : "",
             derniereOuverture: Number(s.derniereOuverture) || null,
-            ajouteLe: Number(s.ajouteLe) || Date.now()
+            ajouteLe: Number(s.ajouteLe) || Date.now(),
+            perso: s.perso === true // ajouté par la personne elle-même (gardé même si elle suit la config)
           };
           // Anciennes données : « remplir » jamais touché -> passe au mode automatique
           if (o.ajustement === "remplir" && !o.ajusteManuel && o.zoom === 1 && o.posX === 50 && o.posY === 50) o.ajustement = "auto";
@@ -1019,13 +1036,26 @@ function lireConfig() {
   try { return configDepuis(JSON.parse(document.getElementById("config-partagee").textContent || "null")); }
   catch (e) { return null; }
 }
-// « let » : sur le site, la configuration peut arriver un peu plus tard (fichier config.json)
+/* Sur le site (Netlify) : la configuration partagée vient du serveur.
+   Dans claude.ai : elle est glissée dans la page (balise config-partagee). */
+const surLeSite = location.protocol.startsWith("http") && !/claude\.ai$|claudeusercontent\.com$/.test(location.hostname);
+const SERVEUR_CONFIG = "/.netlify/functions/config";
+const CLE_PROPRIO = "watchall.cleProprio"; // mot de passe propriétaire, gardé seulement sur ses appareils
+let cleProprio = "";
+try { cleProprio = localStorage.getItem(CLE_PROPRIO) || ""; } catch (e) { /* stockage bloqué */ }
+let proprioOk = false; // vrai seulement quand le serveur a accepté le mot de passe
+// « let » : sur le site, la configuration arrive un peu plus tard (serveur)
 let CONFIG = lireConfig();
 
 // Copie les services partagés dans l'état d'un visiteur, en gardant ses infos perso (prix, dates)
 function appliquerConfig(e) {
   if (!CONFIG) return;
   const maintenant = Date.now();
+  const idsPartages = new Set(CONFIG.services.map(sc => sc.id));
+  // Services ajoutés par la personne elle-même : gardés à la fin, mais sans image
+  // sur le site (seul le propriétaire met des images)
+  const persos = e.services.filter(s => s.perso && !idsPartages.has(s.id))
+    .map(s => surLeSite && !proprioOk ? { ...s, image: "" } : s);
   e.services = CONFIG.services.map(sc => {
     const local = e.services.find(s => s.id === sc.id) || {};
     return {
@@ -1035,33 +1065,29 @@ function appliquerConfig(e) {
       derniereOuverture: local.derniereOuverture || null,
       ajouteLe: local.ajouteLe || maintenant
     };
-  });
+  }).concat(persos);
 }
+// Sur le site, tout le monde suit toujours la configuration (une seule version des images)
+const suitLePartage = () => surLeSite || (etat.suitConfigPartagee && !etat.proprietaire);
 
 let etat = charger();
 // Visiteur qui suit la configuration : on la met à jour à chaque visite
-if (CONFIG && etat.suitConfigPartagee && !etat.proprietaire) appliquerConfig(etat);
+if (CONFIG && suitLePartage()) appliquerConfig(etat);
 
-/* Sur le site (Netlify), la configuration du propriétaire est dans le fichier config.json,
-   déposé sur GitHub à côté d'index.html. On le lit au démarrage. */
-const surLeSite = location.protocol.startsWith("http") && !/claude\.ai$|claudeusercontent\.com$/.test(location.hostname);
-if (!CONFIG && surLeSite) {
-  fetch("config.json", { cache: "no-cache" })
-    .then(r => r.ok ? r.json() : null)
-    .then(brut => {
-      const cfg = configDepuis(brut);
+/* Sur le site : on lit la configuration sur le serveur. S'il n'en a pas encore,
+   on prend le fichier config.json du dépôt (ancienne méthode, sert de départ). */
+const lireJson = url => fetch(url, { cache: "no-store" }).then(r => r.ok ? r.json() : null).catch(() => null);
+if (surLeSite) {
+  lireJson(SERVEUR_CONFIG)
+    .then(brut => configDepuis(brut) || lireJson("config.json").then(configDepuis))
+    .then(cfg => {
       if (!cfg) return;
       CONFIG = cfg;
-      if (etat.suitConfigPartagee && !etat.proprietaire) {
-        appliquerConfig(etat);
-        sauvegarder();
-        rendreAccueil();
-        if (vueActive === "parametres") rendreParametres();
-        rendreAbonnements();
-      }
-      rendrePartage();
-    })
-    .catch(() => { /* pas de fichier : on garde les services de départ */ });
+      appliquerConfig(etat);
+      dernierPublie = signaturePartage();
+      sauvegarder();
+      rendreTout();
+    });
 }
 
 /* =========================================================
@@ -2264,7 +2290,8 @@ function rendreParametres() {
   $("#btn-exclus").hidden = !n;
 
   const ae = appareilEdition;
-  const choixAppareil = etat.services.some(s => s.image) ? `
+  const images = peutPartager(); // seul le propriétaire touche aux images (sur le site)
+  const choixAppareil = images && etat.services.some(s => s.image) ? `
     <div class="choix-appareil">
       <span class="muet">Cadrage des images pour :</span>
       <span class="segment segment-petit" role="group" aria-label="Appareil à régler">
@@ -2273,25 +2300,25 @@ function rendreParametres() {
       </span>
       <span class="muet petit">Le site choisit tout seul selon l'écran.</span>
     </div>` : "";
-  $("#editeur-services").innerHTML = choixAppareil + etat.services.map((s, i) => `
+  $("#editeur-services").innerHTML = choixAppareil + etat.services.map((s, i) => { const mod = modifiable(s); return `
     <div class="ligne-service" data-id="${esc(s.id)}">
       <div class="ls-tete">
         <span class="ls-num" title="Raccourci clavier">${i < 9 ? i + 1 : ""}</span>
-        <input type="color" data-champ="couleur" value="${esc(s.couleur)}" aria-label="Couleur d'accent de ${esc(s.nom)}">
-        <input class="ls-nom" data-champ="nom" value="${esc(s.nom)}" maxlength="40" aria-label="Nom du service">
-        <div class="ls-boutons">
+        <input type="color" data-champ="couleur" value="${esc(s.couleur)}" aria-label="Couleur d'accent de ${esc(s.nom)}" ${mod ? "" : "disabled"}>
+        <input class="ls-nom" data-champ="nom" value="${esc(s.nom)}" maxlength="40" aria-label="Nom du service" ${mod ? "" : "disabled"}>
+        ${mod ? `<div class="ls-boutons">
           <button class="icone" data-act="haut" aria-label="Monter" ${i === 0 ? "disabled" : ""}>↑</button>
           <button class="icone" data-act="bas" aria-label="Descendre" ${i === etat.services.length - 1 ? "disabled" : ""}>↓</button>
           <button class="btn-retirer" data-act="retirer">Retirer</button>
-        </div>
+        </div>` : `<span class="muet petit">Géré par le propriétaire</span>`}
       </div>
       <div class="ls-champs">
-        <label>Lien<input class="champ" data-champ="url" type="url" value="${esc(s.url)}" placeholder="https://…"></label>
-        <label>Lien de l'app (iPhone)<input class="champ" data-champ="app" type="text" autocapitalize="off" autocorrect="off" spellcheck="false" value="${esc(s.app || "")}" placeholder="ex. nflx:// (vide = site web)"></label>
+        ${mod ? `<label>Lien<input class="champ" data-champ="url" type="url" value="${esc(s.url)}" placeholder="https://…"></label>
+        <label>Lien de l'app (iPhone)<input class="champ" data-champ="app" type="text" autocapitalize="off" autocorrect="off" spellcheck="false" value="${esc(s.app || "")}" placeholder="ex. nflx:// (vide = site web)"></label>` : ""}
         <label>Prix mensuel ($ CA)<input class="champ" data-champ="prix" type="number" min="0" step="0.01" value="${s.prix || ""}" placeholder="0,00"></label>
         <label>Renouvellement<input class="champ" data-champ="renouvellement" type="date" value="${esc(s.renouvellement)}"></label>
       </div>
-      <div class="ls-image">
+      ${images ? `<div class="ls-image">
         <span class="apercu-image">${s.image ? `<img src="${s.image}" alt="Image de ${esc(s.nom)}">` : "Aucune"}</span>
         <button class="bouton-contour bouton-petit" data-act="image">${s.image ? "Changer l'image" : "Ajouter une image"}</button>
         ${s.image ? `
@@ -2302,9 +2329,9 @@ function rendreParametres() {
           </span>
           <button class="bouton-contour bouton-petit" data-act="recadrer" aria-expanded="${recadrageOuvert.has(s.id)}">${recadrageOuvert.has(s.id) ? "Fermer le recadrage" : "Recadrer"}</button>
           <button class="btn-retirer" data-act="retirer-image">Retirer l'image</button>` : ""}
-      </div>
-      ${s.image && recadrageOuvert.has(s.id) ? recadrageHTML(s) : ""}
-    </div>`).join("") || `<div class="vide" style="margin-bottom:12px">Aucun service.</div>`;
+      </div>` : ""}
+      ${images && s.image && recadrageOuvert.has(s.id) ? recadrageHTML(s) : ""}
+    </div>`; }).join("") || `<div class="vide" style="margin-bottom:12px">Aucun service.</div>`;
   cadrerTout(); // l'aperçu du recadrage suit le même cadrage que l'accueil
 }
 
@@ -2361,6 +2388,7 @@ $("#editeur-services").addEventListener("change", e => {
   const ligne = e.target.closest(".ligne-service");
   const s = ligne && serviceParId(ligne.dataset.id);
   if (!champ || !s) return;
+  if (["nom", "url", "app", "couleur"].includes(champ) && !modifiable(s)) return;
   const v = e.target.value;
   if (champ === "nom") {
     if (v.trim()) s.nom = v.trim().slice(0, 40); else e.target.value = s.nom;
@@ -2396,6 +2424,8 @@ $("#editeur-services").addEventListener("click", e => {
   const i = etat.services.findIndex(s => s.id === id);
   if (i < 0) return;
   const act = b.dataset.act;
+  const actImage = ["image", "retirer-image", "recadrer", "recadrage-zero", "ajustement"].includes(act);
+  if ((actImage && !peutPartager()) || (!actImage && !modifiable(etat.services[i]))) return;
   if (act === "image") {
     serviceImageCible = id;
     $("#fichier-image").click();
@@ -2501,7 +2531,7 @@ $("#fichier-image").addEventListener("change", async e => {
 
 $("#btn-ajout-service").addEventListener("click", () => {
   etat.services.push({
-    id: uid(), nom: "Nouveau service", url: "", app: "", couleur: "#9a9aa2", image: "", ajustement: "auto", ajusteManuel: false, zoom: 1, posX: 50, posY: 50, tel: cadrageNeuf(),
+    id: uid(), perso: true, nom: "Nouveau service", url: "", app: "", couleur: "#9a9aa2", image: "", ajustement: "auto", ajusteManuel: false, zoom: 1, posX: 50, posY: 50, tel: cadrageNeuf(),
     prix: 0, renouvellement: "", derniereOuverture: null, ajouteLe: Date.now()
   });
   servicesModifies();
@@ -2583,6 +2613,7 @@ $("#btn-importer").addEventListener("click", e => {
     importEnAttente = null;
     b.textContent = "Importer";
     $("#zone-import").value = "";
+    if (surLeSite && CONFIG) appliquerConfig(etat); // les logos restent ceux du propriétaire
     appliquerTheme(); sauvegarder(); rendreTout();
     toast("Données importées.");
     return;
@@ -2986,7 +3017,90 @@ let artifactPub = null;
 let montrerProprio = false;
 
 function servicesModifies() {
+  if (surLeSite) { planifierPublication(); return; } // site : enregistré pour tout le monde
   if (etat.suitConfigPartagee) { etat.suitConfigPartagee = false; rendrePartage(); }
+}
+
+/* --- Sur le site : une seule configuration, gardée sur le serveur --- */
+// Qui peut changer les images, les noms, les liens et l'ordre des services partagés
+function peutPartager() { return !surLeSite || proprioOk; }
+const estPartage = s => !!(CONFIG && CONFIG.services.some(c => c.id === s.id));
+// Un visiteur peut modifier les services qu'il a ajoutés lui-même (sans image)
+const modifiable = s => peutPartager() || !estPartage(s);
+
+const signaturePartage = () => JSON.stringify(etat.services.map(partieCommune));
+let dernierPublie = "", minuteriePub = null, etatPub = "";
+function planifierPublication() {
+  if (!surLeSite || !proprioOk) return;
+  clearTimeout(minuteriePub);
+  etatPub = "Enregistrement…"; afficherEtatPub();
+  minuteriePub = setTimeout(publierServeur, 1200);
+}
+function afficherEtatPub() { const el = $("#etat-pub"); if (el) el.textContent = etatPub; }
+const enTetesProprio = cle => ({ "content-type": "application/json", "x-watchall-proprio": cle });
+
+async function publierServeur() {
+  const signature = signaturePartage();
+  if (signature === dernierPublie) { etatPub = ""; afficherEtatPub(); return; }
+  try {
+    const services = etat.services.map(partieCommune);
+    const r = await fetch(SERVEUR_CONFIG, { method: "POST", headers: enTetesProprio(cleProprio), body: JSON.stringify({ services }) });
+    if (r.status === 401) { quitterProprio(); toast("Mot de passe refusé : le mode propriétaire est fermé."); return; }
+    if (!r.ok) throw new Error("http " + r.status);
+    const rep = await r.json();
+    dernierPublie = signature;
+    CONFIG = { services, publieLe: rep.publieLe || Date.now() };
+    etatPub = "✓ Enregistré pour tout le monde à " + new Intl.DateTimeFormat("fr-CA", { hour: "numeric", minute: "2-digit" }).format(new Date());
+    rendrePartage();
+  } catch (e) {
+    etatPub = "L'enregistrement n'a pas marché. Il sera réessayé au prochain changement.";
+    afficherEtatPub();
+    toast("L'enregistrement pour tout le monde n'a pas marché.");
+  }
+}
+
+// Vérifie un mot de passe auprès du serveur (rien n'est vérifié dans la page)
+async function verifierProprio(cle) {
+  try {
+    const r = await fetch(SERVEUR_CONFIG + "?action=verifier", { method: "POST", headers: enTetesProprio(cle), body: "{}" });
+    return r.status === 200 ? "ok" : r.status === 401 ? "refuse" : r.status === 503 ? "absent" : "erreur";
+  } catch (e) { return "erreur"; }
+}
+function quitterProprio() {
+  proprioOk = false; cleProprio = "";
+  try { localStorage.removeItem(CLE_PROPRIO); } catch (e) { /* rien */ }
+  if (CONFIG) appliquerConfig(etat); // on revient exactement à la version de tout le monde
+  sauvegarder(); rendreTout();
+}
+if (surLeSite) {
+  $("#btn-ouvrir-proprio").addEventListener("click", () => {
+    $("#form-proprio").hidden = false; $("#btn-ouvrir-proprio").hidden = true; $("#mdp-proprio").focus();
+  });
+  $("#form-proprio").addEventListener("submit", async e => {
+    e.preventDefault();
+    const champ = $("#mdp-proprio"), b = $("#btn-deverrouiller");
+    const cle = champ.value;
+    if (!cle) return;
+    b.disabled = true; b.textContent = "Vérification…";
+    const res = await verifierProprio(cle);
+    b.disabled = false; b.textContent = "Déverrouiller";
+    if (res === "ok") {
+      cleProprio = cle; proprioOk = true; champ.value = "";
+      try { localStorage.setItem(CLE_PROPRIO, cle); } catch (err) { /* il faudra le retaper */ }
+      rendreTout();
+      toast("Mode propriétaire activé.");
+    } else {
+      toast(res === "refuse" ? "Mot de passe incorrect."
+        : res === "absent" ? "Le mot de passe n'est pas encore configuré sur Netlify (WATCHALL_ADMIN)."
+        : "Le serveur ne répond pas. Réessaie dans un moment.");
+    }
+  });
+  $("#btn-quitter-proprio").addEventListener("click", () => { quitterProprio(); toast("Mode propriétaire fermé sur cet appareil."); });
+  // Appareil déjà déverrouillé : on revérifie le mot de passe auprès du serveur
+  if (cleProprio) verifierProprio(cleProprio).then(res => {
+    if (res === "ok") { proprioOk = true; rendreTout(); }
+    else if (res === "refuse") quitterProprio();
+  });
 }
 
 const fmtDateHeure = new Intl.DateTimeFormat("fr-CA", { day: "numeric", month: "long", hour: "numeric", minute: "2-digit" });
@@ -2995,6 +3109,17 @@ function rendrePartage() {
   const proprio = $("#partage-proprio"), visiteur = $("#partage-visiteur");
   // Le bouton « Publier » s'affiche seulement si la page peut se republier
   // Un visiteur ne voit pas le bouton (sauf s'il clique « Je suis le propriétaire », ex. nouvel appareil)
+  if (surLeSite) { // site : un seul bloc, celui du serveur
+    proprio.hidden = true; visiteur.hidden = true; $("#partage-site").hidden = true;
+    $("#partage-serveur").hidden = false;
+    $("#ps-visiteur").hidden = proprioOk;
+    $("#ps-proprio").hidden = !proprioOk;
+    afficherEtatPub();
+    $("#statut-partage").textContent = CONFIG && CONFIG.publieLe
+      ? `Version actuelle publiée le ${fmtDateHeure.format(new Date(CONFIG.publieLe))}.` : "";
+    $("#bloc-partage").hidden = false;
+    return;
+  }
   const estProprio = !CONFIG || etat.proprietaire || montrerProprio;
   proprio.hidden = !artifactPub || !estProprio;
   // Sur le site : le propriétaire exporte config.json (pas de republication possible ici)

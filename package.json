@@ -1,0 +1,8 @@
+{
+  "name": "watchall",
+  "private": true,
+  "description": "Watchall : dépendance du serveur (stockage de la configuration partagée)",
+  "dependencies": {
+    "@netlify/blobs": "^8.1.0"
+  }
+}
