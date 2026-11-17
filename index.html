@@ -308,6 +308,16 @@ h2.titre-section { font-family: var(--serif); font-weight: 400; font-size: 28px;
    8. PARAMÈTRES
    ========================================================= */
 .bloc { padding: 32px 0; border-top: 1px solid var(--ligne); }
+/* Comptes */
+.form-compte { display: grid; gap: 10px; max-width: 360px; margin-top: 4px; }
+.form-compte label { display: grid; gap: 6px; font-size: 13px; color: var(--muet); }
+.form-compte .erreur { color: var(--avert); font-size: 13px; min-height: 1em; margin: 0; }
+.compte-ligne { display: flex; flex-wrap: wrap; gap: 10px; align-items: center; }
+.bandeau-compte { display: flex; flex-wrap: wrap; align-items: center; gap: 10px 16px; margin-top: 28px; padding: 16px 20px; border: 1px solid var(--ligne); border-radius: 16px; color: var(--muet); font-size: 14px; }
+.bandeau-compte strong { color: var(--texte); font-weight: 500; }
+.bandeau-compte > span { flex: 1 1 320px; }
+.bandeau-compte .lien-discret { white-space: nowrap; }
+.salut .nom-salut { font-style: normal; }
 .bloc:first-of-type { border-top: 0; padding-top: 0; }
 .bloc p { margin: 0 0 16px; max-width: 640px; }
 /* Bloc « Avancé » repliable (clé TMDB) */
@@ -411,6 +421,20 @@ textarea.champ { min-height: 140px; font-family: var(--mono); font-size: 12px; r
 .palette li .p-detail { font-size: 12px; color: var(--muet); white-space: nowrap; }
 .palette li .p-sans-point { width: 8px; flex: none; }
 .palette .p-vide { color: var(--muet); padding: 18px 14px; cursor: default; }
+/* Recherche « Où regarder » (films et séries via TMDB) */
+.palette .p-section { font-size: 11px; letter-spacing: .08em; text-transform: uppercase; color: var(--pale); padding: 14px 14px 4px; cursor: default; }
+.palette .p-section:hover { background: none; }
+.palette li.p-film { align-items: flex-start; }
+.p-affiche { width: 34px; aspect-ratio: 2 / 3; border-radius: 6px; object-fit: cover; background: var(--surface-2); flex: none; }
+.p-film .p-libelle { white-space: normal; }
+.p-sous { display: block; font-size: 12px; color: var(--muet); margin-top: 3px; }
+.p-sous .mien { color: var(--texte); }
+.ou-groupe { margin-top: 18px; }
+.ou-groupe h3 { font-size: 12px; letter-spacing: .08em; text-transform: uppercase; color: var(--muet); font-weight: 500; margin: 0 0 8px; }
+.chip-plateforme { display: inline-flex; align-items: center; gap: 7px; padding: 6px 12px; border-radius: 999px; border: 1px solid var(--ligne); font-size: 13px; margin: 0 6px 6px 0; }
+.chip-plateforme.mien { border-color: var(--c); }
+.chip-plateforme.mien::before { content: ""; width: 7px; height: 7px; border-radius: 50%; background: var(--c); }
+.ou-aucun { color: var(--muet); margin-top: 18px; }
 .palette-pied { display: flex; gap: 18px; padding: 12px 20px; border-top: 1px solid var(--ligne); font-size: 12px; color: var(--muet); flex-wrap: wrap; }
 .palette-pied kbd { margin-right: 4px; }
 
@@ -600,6 +624,11 @@ textarea.champ { min-height: 140px; font-family: var(--mono); font-size: 12px; r
       <button class="bouton-hasard" data-action="hasard">Je sais pas quoi regarder <span>→</span></button>
       <button class="lien-discret lien-raccourci" data-action="aide">Raccourcis <kbd>?</kbd></button>
     </div>
+    <div class="bandeau-compte" id="bandeau-compte" hidden>
+      <span><strong>Crée ton compte Watchall</strong> pour retrouver ta liste, tes notes et tes abonnements sur tous tes appareils.</span>
+      <button class="bouton-contour bouton-petit" data-compte="ouvrir">Créer un compte ou me connecter</button>
+      <button class="lien-discret" data-compte="plus-tard">Plus tard</button>
+    </div>
     <div class="section-en-cours" id="en-cours-accueil"></div>
   </section>
 
@@ -661,6 +690,50 @@ textarea.champ { min-height: 140px; font-family: var(--mono); font-size: 12px; r
   <!-- ===================== PARAMÈTRES ===================== -->
   <section class="vue" id="vue-parametres">
     <header class="entete-vue"><h1>Paramètres</h1></header>
+
+    <div class="bloc" id="bloc-compte" hidden>
+      <h2 class="titre-section">Mon compte</h2>
+      <!-- Pas connecté -->
+      <div id="compte-dehors">
+        <p class="muet">Avec un compte, ta liste, tes notes, tes prix et tes réglages te suivent sur tous tes appareils. Choisis un mot de passe que tu n'utilises nulle part ailleurs.</p>
+        <div class="segment segment-petit" role="group" aria-label="Compte">
+          <button data-compte-onglet="connexion" class="actif">Me connecter</button>
+          <button data-compte-onglet="inscription">Créer un compte</button>
+        </div>
+        <form class="form-compte" id="form-compte" style="margin-top:14px">
+          <label id="champ-nom" hidden>Ton prénom (affiché sur l'accueil)<input class="champ" name="nom" maxlength="30" autocomplete="given-name"></label>
+          <label>Nom d'utilisateur<input class="champ" name="identifiant" maxlength="30" autocomplete="username" autocapitalize="off" autocorrect="off" spellcheck="false" placeholder="ex. william"></label>
+          <label>Mot de passe<input class="champ" name="motDePasse" type="password" maxlength="200" autocomplete="current-password" placeholder="8 caractères ou plus"></label>
+          <p class="erreur" id="erreur-compte" role="alert"></p>
+          <div><button class="bouton-plein" type="submit" id="btn-compte">Me connecter</button></div>
+        </form>
+      </div>
+      <!-- Connecté -->
+      <div id="compte-dedans" hidden>
+        <p id="texte-compte"></p>
+        <p class="statut-partage" id="etat-sync"></p>
+        <form class="form-compte" id="form-nom">
+          <label>Prénom affiché<input class="champ" name="nom" maxlength="30" autocomplete="given-name"></label>
+          <div><button class="bouton-contour bouton-petit" type="submit">Changer mon prénom</button></div>
+        </form>
+        <details class="bloc-avance" style="margin-top:20px">
+          <summary><span class="lien-discret">Changer mon mot de passe</span></summary>
+          <form class="form-compte" id="form-mdp">
+            <label>Mot de passe actuel<input class="champ" name="ancien" type="password" autocomplete="current-password"></label>
+            <label>Nouveau mot de passe<input class="champ" name="nouveau" type="password" autocomplete="new-password" placeholder="8 caractères ou plus"></label>
+            <div><button class="bouton-contour bouton-petit" type="submit">Changer le mot de passe</button></div>
+          </form>
+        </details>
+        <div class="compte-ligne" style="margin-top:20px">
+          <button class="bouton-contour" id="btn-deconnexion">Me déconnecter</button>
+          <button class="btn-retirer" id="btn-supprimer-compte">Supprimer mon compte</button>
+        </div>
+        <form class="form-compte" id="form-supprimer" hidden style="margin-top:12px">
+          <label>Pour supprimer ton compte et toutes ses données, entre ton mot de passe<input class="champ" name="motDePasse" type="password" autocomplete="current-password"></label>
+          <div><button class="bouton-contour danger" type="submit">Supprimer définitivement</button></div>
+        </form>
+      </div>
+    </div>
 
     <div class="bloc">
       <h2 class="titre-section">Apparence</h2>
@@ -736,6 +809,14 @@ textarea.champ { min-height: 140px; font-family: var(--mono); font-size: 12px; r
         <div id="ps-proprio" hidden>
           <p class="muet">✓ <strong>Mode propriétaire.</strong> Tes changements de logos, de cadrages, de noms, de liens et d'ordre des services sont enregistrés pour tout le monde, quelques secondes après chaque modification.</p>
           <p class="statut-partage" id="etat-pub"></p>
+          <details class="bloc-avance" style="margin:8px 0 14px">
+            <summary><span class="lien-discret">Un ami a oublié son mot de passe</span></summary>
+            <form class="form-compte" id="form-reinit">
+              <label>Son nom d'utilisateur<input class="champ" name="identifiant" autocapitalize="off" autocorrect="off" spellcheck="false"></label>
+              <label>Nouveau mot de passe temporaire<input class="champ" name="nouveau" type="text" autocomplete="off" placeholder="8 caractères ou plus"></label>
+              <div><button class="bouton-contour bouton-petit" type="submit">Réinitialiser</button></div>
+            </form>
+          </details>
           <button class="lien-discret" id="btn-quitter-proprio">Quitter le mode propriétaire sur cet appareil</button>
         </div>
       </div>
@@ -768,7 +849,7 @@ textarea.champ { min-height: 140px; font-family: var(--mono); font-size: 12px; r
 <!-- ===================== PALETTE DE COMMANDES ===================== -->
 <div class="voile" id="palette">
   <div class="palette" role="dialog" aria-modal="true" aria-label="Recherche rapide">
-    <input id="palette-champ" placeholder="Un service, un titre ou une action…" autocomplete="off" spellcheck="false" aria-label="Rechercher">
+    <input id="palette-champ" placeholder="Un film, une série, un service ou une action…" autocomplete="off" spellcheck="false" aria-label="Rechercher">
     <ul id="palette-resultats" role="listbox"></ul>
     <div class="palette-pied">
       <span><kbd>↑</kbd><kbd>↓</kbd>naviguer</span>
@@ -1004,6 +1085,7 @@ let avertiEchec = false;
 function sauvegarder() {
   try {
     localStorage.setItem(CLE_STOCKAGE, JSON.stringify(etat));
+    if (typeof planifierSync === "function") planifierSync(); // compte : envoyé au serveur
     return true;
   } catch (e) {
     if (!avertiEchec) {
@@ -1406,7 +1488,9 @@ function styleImage(s, app) {
 function rendreAccueil() {
   const h = new Date().getHours();
   const salut = h < 12 ? "Bonjour" : h < 18 ? "Bon après-midi" : "Bonsoir";
-  $("#salut").innerHTML = `${salut}<em>.</em>`;
+  const prenom = compte && compte.nom ? `, <span class="nom-salut">${esc(compte.nom)}</span>` : "";
+  $("#salut").innerHTML = `${salut}${prenom}<em>.</em>`;
+  $("#bandeau-compte").hidden = !surLeSite || !!compte || compteBandeauCache();
   $("#date-du-jour").textContent = fmtDateLongue.format(new Date());
 
   const zone = $("#tuiles");
@@ -1862,7 +1946,7 @@ let ctlTmdb = null;
 let fournisseursCA = null; // liste des plateformes connues de TMDB au Canada (gardée en mémoire)
 
 // Un appel à l'API TMDB. Jeton (eyJ...) dans l'en-tête si possible, sinon clé API classique.
-async function appelTmdb(chemin, params = {}) {
+async function appelTmdb(chemin, params = {}, signal) {
   const cle = (etat.tmdbCle || "").trim();
   const entetes = { accept: "application/json" };
   let url;
@@ -1878,7 +1962,7 @@ async function appelTmdb(chemin, params = {}) {
   }
   Object.entries(params).forEach(([k, v]) => { if (v !== "" && v !== null && v !== undefined) url.searchParams.set(k, v); });
   let r;
-  try { r = await fetch(url, { headers: entetes, signal: ctlTmdb ? ctlTmdb.signal : undefined }); }
+  try { r = await fetch(url, { headers: entetes, signal: signal || (ctlTmdb ? ctlTmdb.signal : undefined) }); }
   catch (e) { throw { code: e && e.name === "AbortError" ? "cancelled" : "reseau" }; }
   if (r.status === 401) throw { code: "cle_invalide" };
   if (r.status === 503 && !cle) throw { code: "serveur_sans_cle" };
@@ -2691,6 +2775,7 @@ const modaleOuverte = () => $("#modale").classList.contains("ouvert");
 
 $("#modale").addEventListener("click", e => {
   if (e.target.id === "modale") return fermerModale(); // clic sur le fond
+  if (actionOu(e)) return;
   if (actionSuggestion(e)) return;
   const mode = e.target.closest("[data-mode]");
   if (mode) { modeHasard = mode.dataset.mode; rendrePanneau(); return; }
@@ -2758,8 +2843,11 @@ function filtrerPalette() {
   resultatsPalette = mots.length
     ? tous.filter(it => { const t = sansAccents(it.libelle + " " + it.detail); return mots.every(m => t.includes(m)); }).slice(0, 12)
     : tous;
-  // Un titre qui n'est pas encore dans la liste : on propose de l'ajouter directement
+  // « Où regarder » : vrais films et séries (TMDB), cherchés pendant qu'on tape
   const brut = $("#palette-champ").value.trim();
+  lancerRechercheOu(brut);
+  resultatsOu.forEach((r, k) => resultatsPalette.push(elementOu(r, k === 0)));
+  // Un titre qui n'est pas encore dans la liste : on propose de l'ajouter directement
   if (brut.length >= 2 && !titreConnu(brut)) {
     resultatsPalette.push({
       libelle: `Ajouter « ${texteCourt(brut, 60)} » à ma liste`, detail: "Action",
@@ -2772,15 +2860,156 @@ function filtrerPalette() {
 
 function dessinerPalette() {
   const ul = $("#palette-resultats");
-  if (!resultatsPalette.length) { ul.innerHTML = `<li class="p-vide">Aucun résultat.</li>`; return; }
+  const enCours = etatOu === "charge" ? `<li class="p-section">Où regarder</li><li class="p-vide">Recherche des films et séries…</li>`
+    : etatOu === "erreur" ? `<li class="p-section">Où regarder</li><li class="p-vide">La recherche de films ne répond pas pour l'instant.</li>`
+    : etatOu === "vide" ? `<li class="p-section">Où regarder</li><li class="p-vide">Aucun film ni série trouvé.</li>` : "";
+  if (!resultatsPalette.length && !enCours) { ul.innerHTML = `<li class="p-vide">Aucun résultat.</li>`; return; }
   ul.innerHTML = resultatsPalette.map((it, i) => `
-    <li role="option" data-i="${i}" class="${i === indexPalette ? "choisi" : ""}" aria-selected="${i === indexPalette}">
-      ${it.couleur ? `<span class="point" style="--c:${esc(it.couleur)}"></span>` : `<span class="p-sans-point"></span>`}
-      <span class="p-libelle">${esc(it.libelle)}</span>
+    ${it.premierFilm ? `<li class="p-section">Où regarder</li>` : ""}
+    <li role="option" data-i="${i}" class="${i === indexPalette ? "choisi" : ""}${it.film ? " p-film" : ""}" aria-selected="${i === indexPalette}">
+      ${it.film ? (it.affiche ? `<img class="p-affiche" src="${esc(it.affiche)}" alt="" loading="lazy" onerror="this.style.visibility='hidden'">` : `<span class="p-affiche"></span>`)
+        : it.couleur ? `<span class="point" style="--c:${esc(it.couleur)}"></span>` : `<span class="p-sans-point"></span>`}
+      <span class="p-libelle">${esc(it.libelle)}${it.sous ? `<span class="p-sous">${it.sous}</span>` : ""}</span>
       <span class="p-detail">${esc(it.detail)}</span>
-    </li>`).join("");
+    </li>`).join("") + enCours;
   const choisi = ul.querySelector(".choisi");
   if (choisi) choisi.scrollIntoView({ block: "nearest" });
+}
+
+/* ---------- « Où regarder » : un film ou une série, et ses plateformes au Canada ----------
+   Données TMDB, disponibilités JustWatch. Marche sur le site (serveur) ou avec une clé perso. */
+let resultatsOu = [], etatOu = "", requeteOu = "", minuterieOu = null, ctlOu = null, ficheOu = null;
+const ouRegarderDispo = () => !!(etat.tmdbCle || "").trim() || serveurTmdb === true;
+// Le service à moi qui correspond à une plateforme TMDB (« Disney Plus » = « Disney+ »)
+const monService = nom => etat.services.find(s => memePlateforme(nom, s.nom)) || null;
+
+function lancerRechercheOu(brut) {
+  if (!ouRegarderDispo() || brut.length < 2) {
+    if (ctlOu) ctlOu.abort();
+    requeteOu = ""; resultatsOu = []; etatOu = "";
+    return;
+  }
+  if (brut === requeteOu) return; // déjà cherché (ou en cours)
+  requeteOu = brut; resultatsOu = []; etatOu = "charge";
+  clearTimeout(minuterieOu);
+  minuterieOu = setTimeout(() => chercherOu(brut), 350); // on attend que la personne arrête de taper
+}
+
+async function chercherOu(q) {
+  if (ctlOu) ctlOu.abort();
+  const ctl = ctlOu = new AbortController();
+  try {
+    const res = await appelTmdb("/search/multi", { query: q, language: "fr-CA", include_adult: false }, ctl.signal);
+    const trouves = (res.results || []).filter(r => r.media_type === "movie" || r.media_type === "tv").slice(0, 5);
+    const details = await Promise.all(trouves.map(r =>
+      appelTmdb(`/${r.media_type}/${r.id}`, { language: "fr-CA", append_to_response: "watch/providers" }, ctl.signal)
+        .then(d => ficheDepuisTmdb(d, r.media_type)).catch(() => null)));
+    if (q !== requeteOu) return;
+    resultatsOu = details.filter(Boolean);
+    etatOu = resultatsOu.length ? "" : "vide";
+  } catch (e) {
+    if (e && e.code === "cancelled") return;
+    if (q !== requeteOu) return;
+    resultatsOu = []; etatOu = "erreur";
+  }
+  if (paletteOuverte()) { const i = indexPalette; filtrerPalette(); indexPalette = Math.min(i, Math.max(0, resultatsPalette.length - 1)); dessinerPalette(); }
+}
+
+// Ce qu'on garde d'une fiche TMDB (texte nettoyé, plateformes du Canada)
+function ficheDepuisTmdb(d, media) {
+  const ca = (((d["watch/providers"] || {}).results || {}).CA) || {};
+  const plateformes = liste => {
+    const vus = new Set();
+    return (liste || []).map(o => ({ nom: texteCourt(o.provider_name || "", 40), service: monService(o.provider_name || "") }))
+      .filter(p => { const cle = p.service ? p.service.id : nomCompact(p.nom); if (!p.nom || vus.has(cle)) return false; vus.add(cle); return true; });
+  };
+  const date = d.release_date || d.first_air_date || "";
+  const duree = media === "movie" ? (d.runtime || 0) : ((d.episode_run_time || [])[0] || 0);
+  return {
+    tmdbId: d.id, media,
+    titre: texteCourt(d.title || d.name || "", 120),
+    annee: /^\d{4}/.test(date) ? Number(date.slice(0, 4)) : null,
+    type: media === "movie" ? "film" : "serie",
+    duree: Math.max(0, Math.round(Number(duree) || 0)),
+    genres: [...new Set((d.genres || []).map(g => GENRE_DEPUIS_TMDB[g.id]).filter(Boolean))].slice(0, 3),
+    resume: texteCourt(d.overview || "", 600),
+    affiche: typeof d.poster_path === "string" && /^\/[\w.-]+$/.test(d.poster_path) ? IMG_TMDB + d.poster_path : "",
+    abonnement: plateformes(ca.flatrate),
+    gratuit: plateformes([...(ca.free || []), ...(ca.ads || [])]),
+    location: plateformes(ca.rent),
+    achat: plateformes(ca.buy)
+  };
+}
+
+// Une ligne de la palette pour un film ou une série
+function elementOu(r, premier) {
+  const miens = r.abonnement.filter(p => p.service);
+  let sous;
+  if (miens.length) sous = `<span class="mien">Sur ${miens.map(p => esc(p.service.nom)).join(", ")} ✓</span>`;
+  else if (r.abonnement.length) sous = "Abonnement : " + r.abonnement.slice(0, 3).map(p => esc(p.nom)).join(", ");
+  else if (r.gratuit.length) sous = "Gratuit : " + r.gratuit.slice(0, 3).map(p => esc(p.nom)).join(", ");
+  else if (r.location.length || r.achat.length) sous = "Location ou achat seulement";
+  else sous = "Pas offert au Canada en ce moment";
+  return {
+    film: true, premierFilm: premier, affiche: r.affiche, sous,
+    libelle: r.titre + (r.annee ? ` (${r.annee})` : ""),
+    detail: r.type === "film" ? "Film" : "Série",
+    faire: () => ouvrirFicheOu(r)
+  };
+}
+
+function ouvrirFicheOu(r) {
+  ficheOu = r;
+  const chips = liste => liste.map(p => p.service
+    ? `<span class="chip-plateforme mien" style="--c:${esc(p.service.couleur)}">${esc(p.service.nom)}</span>`
+    : `<span class="chip-plateforme">${esc(p.nom)}</span>`).join("");
+  const groupe = (titre, liste) => liste.length ? `<div class="ou-groupe"><h3>${titre}</h3>${chips(liste)}</div>` : "";
+  const meta = [r.type === "film" ? "Film" : "Série", r.annee, r.duree ? (r.type === "film" ? fmtDuree(r.duree) : `${fmtDuree(r.duree)} par épisode`) : ""].filter(Boolean).join(" · ");
+  const miens = r.abonnement.filter(p => p.service);
+  const rien = !r.abonnement.length && !r.gratuit.length && !r.location.length && !r.achat.length;
+  const dejaListe = titreConnu(r.titre);
+  ouvrirModale(`
+    <div class="cs-corps">
+      ${r.affiche ? `<img class="cs-affiche" src="${esc(r.affiche)}" alt="" onerror="this.style.visibility='hidden'">` : ""}
+      <div class="cs-texte">
+        <div class="cs-meta">${esc(meta)}</div>
+        <h2 style="margin-top:6px">${esc(r.titre)}</h2>
+        ${r.resume ? `<p class="cs-resume">${esc(r.resume)}</p>` : ""}
+      </div>
+    </div>
+    ${groupe("Inclus dans un abonnement", r.abonnement)}
+    ${groupe("Gratuit", r.gratuit)}
+    ${groupe("Location", r.location)}
+    ${groupe("Achat", r.achat)}
+    ${rien ? `<p class="ou-aucun">Pas offert au Canada en ce moment, d'après JustWatch.</p>` : ""}
+    <div class="cs-actions" style="margin-top:22px">
+      ${miens.map(p => `<button class="bouton-plein" data-ou="ouvrir" data-service="${esc(p.service.id)}">Ouvrir ${esc(p.service.nom)} ↗</button>`).join("")}
+      ${dejaListe ? `<span class="muet">Déjà dans ta liste</span>` : `<button class="bouton-contour" data-ou="liste">Ajouter à ma liste</button>`}
+    </div>
+    <p class="source-donnees">Données : <a href="https://www.themoviedb.org" target="_blank" rel="noopener noreferrer">TMDB</a> · Disponibilités au Canada : <a href="https://www.justwatch.com/ca" target="_blank" rel="noopener noreferrer">JustWatch</a>. Elles peuvent avoir quelques jours de retard.</p>`);
+}
+
+// Boutons de la fiche « Où regarder »
+function actionOu(e) {
+  const b = e.target.closest("[data-ou]");
+  if (!b || !ficheOu) return false;
+  const r = ficheOu;
+  if (b.dataset.ou === "ouvrir") {
+    const s = serviceParId(b.dataset.service);
+    fermerModale();
+    if (s) ouvrirService(s);
+  } else if (b.dataset.ou === "liste") {
+    const mien = r.abonnement.find(p => p.service);
+    etat.liste.push({
+      id: uid(), titre: r.titre, serviceId: mien ? mien.service.id : "", statut: "a-voir",
+      duree: r.duree, type: r.type, genres: r.genres, annee: r.annee, note: 0, ajouteLe: Date.now(),
+      tmdbId: r.tmdbId, media: r.media
+    });
+    sauvegarder(); rendreListe(); rendreAccueil();
+    b.outerHTML = `<span class="muet">Ajouté à ta liste ✓</span>`;
+    toast(`« ${r.titre} » ajouté à ta liste`);
+  }
+  return true;
 }
 
 function ouvrirPalette() {
@@ -3233,6 +3462,249 @@ promesseArtifact.then(a => {
 });
 
 /* =========================================================
+   16 b. COMPTES (seulement sur le site)
+   Le serveur garde le mot de passe sous forme d'empreinte et les données
+   perso du compte. Cet appareil garde un jeton de connexion.
+   ========================================================= */
+const SERVEUR_COMPTE = "/.netlify/functions/compte";
+const CLE_JETON = "watchall.jeton", CLE_COMPTE = "watchall.compte", CLE_BANDEAU = "watchall.bandeauCompte";
+const lireLocal = cle => { try { return localStorage.getItem(cle); } catch (e) { return null; } };
+const ecrireLocal = (cle, v) => { try { v === null ? localStorage.removeItem(cle) : localStorage.setItem(cle, v); } catch (e) { /* rien */ } };
+let jeton = surLeSite ? (lireLocal(CLE_JETON) || "") : "";
+let compte = null;
+try { compte = jeton ? JSON.parse(lireLocal(CLE_COMPTE) || "null") : null; } catch (e) { compte = null; }
+let majServeur = compte && compte.majLe || 0; // version du serveur sur laquelle on se base
+let signatureSync = "", minuterieSync = null, etatSync = "", ongletCompte = "connexion";
+const lireSession = cle => { try { return sessionStorage.getItem(cle); } catch (e) { return null; } };
+const ecrireSession = (cle, v) => { try { sessionStorage.setItem(cle, v); } catch (e) { /* rien */ } };
+const compteBandeauCache = () => lireSession(CLE_BANDEAU) === "1";
+
+async function appelCompte(action, corps = {}, avecJeton = true) {
+  const entetes = { "content-type": "application/json" };
+  if (avecJeton && jeton) entetes.authorization = "Bearer " + jeton;
+  if (action === "reinitialiser") entetes["x-watchall-proprio"] = cleProprio;
+  let r;
+  try { r = await fetch(`${SERVEUR_COMPTE}?action=${action}`, { method: "POST", headers: entetes, body: JSON.stringify(corps) }); }
+  catch (e) { return { statut: 0, corps: { erreur: "reseau" } }; }
+  let c = {};
+  try { c = await r.json(); } catch (e) { /* réponse vide */ }
+  return { statut: r.status, corps: c };
+}
+
+// Les données qui appartiennent à la personne (pas les logos : eux sont partagés)
+function donneesPerso() {
+  return {
+    version: 1,
+    liste: etat.liste, exclus: etat.exclus, filtresDecouvrir: etat.filtresDecouvrir, theme: etat.theme,
+    services: etat.services.map(s => ({ id: s.id, prix: s.prix, renouvellement: s.renouvellement, derniereOuverture: s.derniereOuverture })),
+    persos: etat.services.filter(s => s.perso).map(s => ({ ...s, image: "" }))
+  };
+}
+// Remplace les données perso de cet appareil par celles du compte
+function appliquerDonneesPerso(d) {
+  if (!d || typeof d !== "object") return;
+  const infos = new Map((Array.isArray(d.services) ? d.services : []).map(i => [String(i && i.id), i]));
+  const persos = Array.isArray(d.persos) ? d.persos.filter(p => p && p.perso) : [];
+  const services = etat.services.filter(s => !s.perso).map(s => {
+    const i = infos.get(s.id);
+    return i ? { ...s, prix: i.prix, renouvellement: i.renouvellement, derniereOuverture: i.derniereOuverture } : s;
+  }).concat(persos);
+  const cle = etat.tmdbCle;
+  etat = normaliser({ ...etat, liste: d.liste, exclus: d.exclus, filtresDecouvrir: d.filtresDecouvrir, theme: d.theme || etat.theme, services }, false);
+  etat.tmdbCle = cle; // la clé TMDB perso reste sur l'appareil
+  if (CONFIG && suitLePartage()) appliquerConfig(etat);
+  signatureSync = JSON.stringify(donneesPerso());
+  try { localStorage.setItem(CLE_STOCKAGE, JSON.stringify(etat)); } catch (e) { /* rien */ }
+  appliquerTheme(); rendreTout();
+}
+
+function retenirCompte(c) {
+  compte = { identifiant: c.identifiant, nom: c.nom, majLe: majServeur };
+  ecrireLocal(CLE_COMPTE, JSON.stringify(compte));
+}
+function oublierCompte() {
+  jeton = ""; compte = null; majServeur = 0; signatureSync = "";
+  ecrireLocal(CLE_JETON, null); ecrireLocal(CLE_COMPTE, null);
+  rendreTout();
+}
+
+function planifierSync() {
+  if (!surLeSite || !jeton || !compte) return;
+  if (JSON.stringify(donneesPerso()) === signatureSync) return; // rien de perso n'a changé
+  clearTimeout(minuterieSync);
+  etatSync = "Enregistrement…"; afficherEtatSync();
+  minuterieSync = setTimeout(envoyerSync, 1500);
+}
+function afficherEtatSync() { const el = $("#etat-sync"); if (el) el.textContent = etatSync; }
+
+async function envoyerSync() {
+  const donnees = donneesPerso(), signature = JSON.stringify(donnees);
+  if (signature === signatureSync) { etatSync = "✓ À jour sur tous tes appareils"; afficherEtatSync(); return; }
+  const { statut, corps } = await appelCompte("sauver", { donnees, base: majServeur });
+  if (statut === 200) {
+    majServeur = corps.majLe; signatureSync = signature; retenirCompte(compte);
+    etatSync = "✓ À jour sur tous tes appareils"; afficherEtatSync();
+  } else if (statut === 409) {
+    // Un autre appareil a enregistré pendant ce temps : on part de sa version
+    // et on y ajoute les titres ajoutés ici entre-temps, puis on renvoie le tout
+    majServeur = corps.majLe || 0; retenirCompte(compte);
+    const srv = corps.donnees || {};
+    const ids = new Set((Array.isArray(srv.liste) ? srv.liste : []).map(t => t && t.id));
+    const ajoutes = donnees.liste.filter(t => !ids.has(t.id));
+    appliquerDonneesPerso({
+      ...srv,
+      liste: (Array.isArray(srv.liste) ? srv.liste : []).concat(ajoutes),
+      exclus: [...new Set([...(Array.isArray(srv.exclus) ? srv.exclus : []), ...donnees.exclus])]
+    });
+    if (ajoutes.length) { signatureSync = ""; planifierSync(); }
+    toast("Ta liste a été mise à jour avec celle de ton autre appareil.");
+  } else if (statut === 401) {
+    oublierCompte(); toast("Ta session a expiré. Reconnecte-toi dans Paramètres.");
+  } else {
+    etatSync = "Pas encore enregistré en ligne (connexion?). On réessaie au prochain changement."; afficherEtatSync();
+  }
+}
+
+// Au démarrage, et quand on revient sur l'onglet : on récupère la dernière version du compte
+async function rafraichirCompte() {
+  if (!surLeSite || !jeton) return;
+  const { statut, corps } = await appelCompte("moi");
+  if (statut === 401) { oublierCompte(); return; }
+  if (statut !== 200) return; // hors ligne : on garde ce qu'on a
+  const nouveau = (corps.majLe || 0) !== majServeur;
+  majServeur = corps.majLe || 0;
+  retenirCompte(corps);
+  if (corps.donnees && (nouveau || !signatureSync)) appliquerDonneesPerso(corps.donnees);
+  else { rendreAccueil(); rendreCompte(); }
+  if (!corps.donnees) envoyerSync(); // compte tout neuf : on y met ce qui est déjà sur l'appareil
+}
+
+const MESSAGES_COMPTE = {
+  identifiant_invalide: "Nom d'utilisateur : 3 à 30 caractères (lettres, chiffres, point, tiret).",
+  nom_invalide: "Entre ton prénom (30 caractères max).",
+  mot_de_passe_court: "Le mot de passe doit avoir au moins 8 caractères.",
+  identifiant_pris: "Ce nom d'utilisateur est déjà pris.",
+  identifiants_incorrects: "Nom d'utilisateur ou mot de passe incorrect.",
+  trop_d_essais: "Trop d'essais. Réessaie dans 15 minutes.",
+  ancien_incorrect: "Le mot de passe actuel est incorrect.",
+  reseau: "Le serveur ne répond pas. Vérifie ta connexion."
+};
+const messageCompte = c => MESSAGES_COMPTE[c && c.erreur] || "Ça n'a pas marché. Réessaie dans un moment.";
+
+function rendreCompte() {
+  const bloc = $("#bloc-compte");
+  if (!bloc) return;
+  bloc.hidden = !surLeSite;
+  if (!surLeSite) return;
+  $("#compte-dehors").hidden = !!compte;
+  $("#compte-dedans").hidden = !compte;
+  if (compte) {
+    $("#texte-compte").innerHTML = `Connecté en tant que <strong>${esc(compte.nom)}</strong> <span class="muet">(${esc(compte.identifiant)})</span>. Ta liste, tes notes, tes prix et tes réglages sont enregistrés en ligne.`;
+    const champ = $("#form-nom").nom;
+    if (document.activeElement !== champ) champ.value = compte.nom;
+    afficherEtatSync();
+  } else {
+    const inscr = ongletCompte === "inscription";
+    document.querySelectorAll("[data-compte-onglet]").forEach(b => b.classList.toggle("actif", b.dataset.compteOnglet === ongletCompte));
+    $("#champ-nom").hidden = !inscr;
+    $("#form-compte").motDePasse.autocomplete = inscr ? "new-password" : "current-password";
+    $("#btn-compte").textContent = inscr ? "Créer mon compte" : "Me connecter";
+  }
+}
+
+if (surLeSite) {
+  document.querySelectorAll("[data-compte-onglet]").forEach(b => b.addEventListener("click", () => {
+    ongletCompte = b.dataset.compteOnglet; $("#erreur-compte").textContent = ""; rendreCompte();
+  }));
+  $("#form-compte").addEventListener("submit", async e => {
+    e.preventDefault();
+    const f = e.target, b = $("#btn-compte"), err = $("#erreur-compte");
+    const inscr = ongletCompte === "inscription";
+    const corps = { identifiant: f.identifiant.value.trim().toLowerCase(), motDePasse: f.motDePasse.value };
+    if (inscr) corps.nom = f.nom.value.trim();
+    err.textContent = ""; b.disabled = true; b.textContent = inscr ? "Création…" : "Connexion…";
+    const { statut, corps: rep } = await appelCompte(inscr ? "inscription" : "connexion", corps, false);
+    b.disabled = false; rendreCompte();
+    if (statut !== 200) { err.textContent = messageCompte(rep); return; }
+    jeton = rep.jeton; ecrireLocal(CLE_JETON, jeton);
+    majServeur = rep.majLe || 0; retenirCompte(rep);
+    f.reset();
+    if (rep.donnees) { appliquerDonneesPerso(rep.donnees); toast(`Bon retour, ${rep.nom} ! Ta liste est récupérée.`); }
+    else { signatureSync = ""; await envoyerSync(); rendreTout(); toast(`Bienvenue, ${rep.nom} ! Ton compte est créé.`); }
+  });
+  $("#form-nom").addEventListener("submit", async e => {
+    e.preventDefault();
+    const nom = e.target.nom.value.trim();
+    const { statut, corps } = await appelCompte("profil", { nom });
+    if (statut !== 200) { toast(messageCompte(corps)); return; }
+    compte.nom = corps.nom; retenirCompte(compte); rendreAccueil(); rendreCompte();
+    toast("Prénom changé.");
+  });
+  $("#form-mdp").addEventListener("submit", async e => {
+    e.preventDefault();
+    const f = e.target;
+    const { statut, corps } = await appelCompte("mot-de-passe", { ancien: f.ancien.value, nouveau: f.nouveau.value });
+    if (statut !== 200) { toast(messageCompte(corps)); return; }
+    f.reset(); f.closest("details").open = false;
+    toast("Mot de passe changé. Tes autres appareils devront se reconnecter.");
+  });
+  $("#btn-deconnexion").addEventListener("click", async () => {
+    await envoyerSync(); // on enregistre ce qui reste avant de partir
+    await appelCompte("deconnexion");
+    oublierCompte();
+    toast("Tu es déconnecté sur cet appareil.");
+  });
+  $("#btn-supprimer-compte").addEventListener("click", () => { $("#form-supprimer").hidden = false; $("#form-supprimer").motDePasse.focus(); });
+  $("#form-supprimer").addEventListener("submit", async e => {
+    e.preventDefault();
+    const { statut, corps } = await appelCompte("supprimer", { motDePasse: e.target.motDePasse.value });
+    if (statut !== 200) { toast(messageCompte(corps)); return; }
+    e.target.reset(); e.target.hidden = true;
+    oublierCompte();
+    toast("Ton compte et ses données en ligne sont supprimés.");
+  });
+  $("#form-reinit").addEventListener("submit", async e => {
+    e.preventDefault();
+    const f = e.target;
+    const { statut, corps } = await appelCompte("reinitialiser", { identifiant: f.identifiant.value.trim().toLowerCase(), nouveau: f.nouveau.value }, false);
+    if (statut === 200) { toast("Mot de passe réinitialisé. Donne-le à ton ami : il pourra le changer ensuite."); f.reset(); }
+    else toast(corps.erreur === "compte_introuvable" ? "Aucun compte avec ce nom d'utilisateur." : messageCompte(corps));
+  });
+  document.addEventListener("click", e => {
+    const b = e.target.closest("[data-compte]");
+    if (!b) return;
+    const a = b.dataset.compte;
+    if (a === "ouvrir" || a === "inscription" || a === "connexion") {
+      if (modaleOuverte()) fermerModale();
+      ongletCompte = a === "connexion" ? "connexion" : "inscription";
+      allerA("parametres"); rendreCompte();
+      setTimeout(() => { const f = $("#form-compte"); (ongletCompte === "inscription" ? f.nom : f.identifiant).focus(); }, 80);
+    } else { // « Plus tard » / « Continuer sans compte » : on redemande à la prochaine visite
+      ecrireSession(CLE_BANDEAU, "1");
+      if (modaleOuverte()) fermerModale();
+      rendreAccueil();
+    }
+  });
+  document.addEventListener("visibilitychange", () => { if (!document.hidden) rafraichirCompte(); });
+  rafraichirCompte();
+  // À chaque visite, tant qu'on n'est pas connecté : on propose de créer un compte
+  // (une seule fois par visite : pas à chaque retour depuis l'app Netflix)
+  if (!jeton && lireSession("watchall.bienvenueVue") !== "1") setTimeout(() => {
+    if (jeton || modaleOuverte() || paletteOuverte()) return;
+    ecrireSession("watchall.bienvenueVue", "1");
+    ouvrirModale(`
+      <p class="muet" style="margin:0 0 8px;font-size:14px">Bienvenue sur Watchall</p>
+      <h2>Crée ton compte.</h2>
+      <p class="muet" style="margin:10px 0 0;max-width:520px">Ta liste, tes notes et tes abonnements te suivent sur ton téléphone, ton ordi et tous tes appareils. Et on t'appelle par ton prénom.</p>
+      <div class="cs-actions" style="margin-top:24px">
+        <button class="bouton-plein" data-compte="inscription">Créer mon compte</button>
+        <button class="bouton-contour" data-compte="connexion">J'ai déjà un compte</button>
+        <button class="lien-discret" data-compte="plus-tard">Continuer sans compte</button>
+      </div>`);
+  }, 700);
+}
+
+/* =========================================================
    17. DÉMARRAGE
    ========================================================= */
 function rendreTout() {
@@ -3241,6 +3713,7 @@ function rendreTout() {
   rendreAbonnements();
   rendreParametres();
   rendrePartage();
+  rendreCompte();
 }
 
 if (!stockageOK) $("#bandeau-stockage").hidden = false;
