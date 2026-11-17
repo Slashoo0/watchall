@@ -702,7 +702,7 @@ textarea.champ { min-height: 140px; font-family: var(--mono); font-size: 12px; r
         </div>
         <form class="form-compte" id="form-compte" style="margin-top:14px">
           <label id="champ-nom" hidden>Ton prénom (affiché sur l'accueil)<input class="champ" name="nom" maxlength="30" autocomplete="given-name"></label>
-          <label>Nom d'utilisateur<input class="champ" name="identifiant" maxlength="30" autocomplete="username" autocapitalize="off" autocorrect="off" spellcheck="false" placeholder="ex. william"></label>
+          <label>Courriel<input class="champ" name="identifiant" type="text" inputmode="email" maxlength="254" autocomplete="email" autocapitalize="off" autocorrect="off" spellcheck="false" placeholder="toi@exemple.com"></label>
           <label>Mot de passe<input class="champ" name="motDePasse" type="password" maxlength="200" autocomplete="current-password" placeholder="8 caractères ou plus"></label>
           <p class="erreur" id="erreur-compte" role="alert"></p>
           <div><button class="bouton-plein" type="submit" id="btn-compte">Me connecter</button></div>
@@ -812,7 +812,7 @@ textarea.champ { min-height: 140px; font-family: var(--mono); font-size: 12px; r
           <details class="bloc-avance" style="margin:8px 0 14px">
             <summary><span class="lien-discret">Un ami a oublié son mot de passe</span></summary>
             <form class="form-compte" id="form-reinit">
-              <label>Son nom d'utilisateur<input class="champ" name="identifiant" autocapitalize="off" autocorrect="off" spellcheck="false"></label>
+              <label>Son courriel<input class="champ" name="identifiant" type="text" inputmode="email" autocapitalize="off" autocorrect="off" spellcheck="false"></label>
               <label>Nouveau mot de passe temporaire<input class="champ" name="nouveau" type="text" autocomplete="off" placeholder="8 caractères ou plus"></label>
               <div><button class="bouton-contour bouton-petit" type="submit">Réinitialiser</button></div>
             </form>
@@ -3580,11 +3580,11 @@ async function rafraichirCompte() {
 }
 
 const MESSAGES_COMPTE = {
-  identifiant_invalide: "Nom d'utilisateur : 3 à 30 caractères (lettres, chiffres, point, tiret).",
+  courriel_invalide: "Entre une adresse courriel valide (ex. toi@exemple.com).",
   nom_invalide: "Entre ton prénom (30 caractères max).",
   mot_de_passe_court: "Le mot de passe doit avoir au moins 8 caractères.",
-  identifiant_pris: "Ce nom d'utilisateur est déjà pris.",
-  identifiants_incorrects: "Nom d'utilisateur ou mot de passe incorrect.",
+  courriel_pris: "Un compte existe déjà avec ce courriel. Essaie « Me connecter ».",
+  identifiants_incorrects: "Courriel ou mot de passe incorrect.",
   trop_d_essais: "Trop d'essais. Réessaie dans 15 minutes.",
   ancien_incorrect: "Le mot de passe actuel est incorrect.",
   reseau: "Le serveur ne répond pas. Vérifie ta connexion."
@@ -3668,7 +3668,7 @@ if (surLeSite) {
     const f = e.target;
     const { statut, corps } = await appelCompte("reinitialiser", { identifiant: f.identifiant.value.trim().toLowerCase(), nouveau: f.nouveau.value }, false);
     if (statut === 200) { toast("Mot de passe réinitialisé. Donne-le à ton ami : il pourra le changer ensuite."); f.reset(); }
-    else toast(corps.erreur === "compte_introuvable" ? "Aucun compte avec ce nom d'utilisateur." : messageCompte(corps));
+    else toast(corps.erreur === "compte_introuvable" ? "Aucun compte avec ce courriel." : messageCompte(corps));
   });
   document.addEventListener("click", e => {
     const b = e.target.closest("[data-compte]");
