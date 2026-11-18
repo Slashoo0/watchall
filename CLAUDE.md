@@ -53,6 +53,7 @@ Chercher le titre (ex. `7. MA LISTE`) au lieu de lire tout le fichier.
 
 ## Secrets
 - Variables d'environnement sur Netlify : `TMDB_TOKEN` et `WATCHALL_ADMIN`.
+- Pour « mot de passe oublié » (envoi par un compte Gmail dédié au site) : `WATCHALL_GMAIL` (l'adresse) et `WATCHALL_GMAIL_MDP` (le mot de passe d'application Google). Sans elles, en local, le lien est écrit dans le terminal de `netlify dev`.
 - **Ne jamais les écrire dans le code, dans un commit, ni les afficher** (pas de `netlify env:list` ou `env:get` qui les montrerait à l'écran).
 
 ## Fichiers à ne jamais supprimer

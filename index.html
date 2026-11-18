@@ -738,7 +738,7 @@ textarea.champ { min-height: 140px; font-family: var(--mono); font-size: 12px; r
           <label>Courriel<input class="champ" name="identifiant" type="text" inputmode="email" maxlength="254" autocomplete="email" autocapitalize="off" autocorrect="off" spellcheck="false" placeholder="toi@exemple.com"></label>
           <label>Mot de passe<input class="champ" name="motDePasse" type="password" maxlength="200" autocomplete="current-password" placeholder="8 caractères ou plus"></label>
           <p class="erreur" id="erreur-compte" role="alert"></p>
-          <div><button class="bouton-plein" type="submit" id="btn-compte">Me connecter</button></div>
+          <div class="compte-ligne"><button class="bouton-plein" type="submit" id="btn-compte">Me connecter</button><button class="lien-discret" type="button" id="btn-oubli">Mot de passe oublié ?</button></div>
         </form>
       </div>
       <!-- Connecté -->
@@ -3875,6 +3875,7 @@ const MESSAGES_COMPTE = {
   identifiants_incorrects: "Courriel ou mot de passe incorrect.",
   trop_d_essais: "Trop d'essais. Réessaie dans 15 minutes.",
   ancien_incorrect: "Le mot de passe actuel est incorrect.",
+  lien_invalide: "Ce lien ne marche plus : il a déjà servi, il a expiré (30 minutes) ou un lien plus récent a été envoyé. Redemande un lien.",
   reseau: "Le serveur ne répond pas. Vérifie ta connexion."
 };
 const messageCompte = c => MESSAGES_COMPTE[c && c.erreur] || "Ça n'a pas marché. Réessaie dans un moment.";
@@ -3897,6 +3898,7 @@ function rendreCompte() {
     $("#champ-nom").hidden = !inscr;
     $("#form-compte").motDePasse.autocomplete = inscr ? "new-password" : "current-password";
     $("#btn-compte").textContent = inscr ? "Créer mon compte" : "Me connecter";
+    $("#btn-oubli").hidden = inscr;
   }
 }
 
@@ -3914,9 +3916,13 @@ if (surLeSite) {
     const { statut, corps: rep } = await appelCompte(inscr ? "inscription" : "connexion", corps, false);
     b.disabled = false; rendreCompte();
     if (statut !== 200) { err.textContent = messageCompte(rep); return; }
+    f.reset();
+    await connecte(rep);
+  });
+  // Après une connexion réussie (formulaire ou lien « mot de passe oublié »)
+  async function connecte(rep) {
     jeton = rep.jeton; ecrireLocal(CLE_JETON, jeton);
     majServeur = rep.majLe || 0; retenirCompte(rep);
-    f.reset();
     if (rep.donnees) {
       // Titres ajoutés sur cet appareil avant la connexion : on les ajoute à ceux du compte
       const duCompte = Array.isArray(rep.donnees.liste) ? rep.donnees.liste : [];
@@ -3930,7 +3936,75 @@ if (surLeSite) {
         : `Bon retour, ${rep.nom} ! Ta liste est récupérée.`);
     }
     else { signatureSync = ""; await envoyerSync(); rendreTout(); toast(`Bienvenue, ${rep.nom} ! Ton compte est créé.`); }
+  }
+
+  // ---------- Mot de passe oublié ----------
+  // 1) On demande un lien par courriel
+  $("#btn-oubli").addEventListener("click", () => {
+    const courriel = $("#form-compte").identifiant.value.trim();
+    ouvrirModale(`
+      <h2>Mot de passe oublié</h2>
+      <p class="muet" style="margin:10px 0 0;max-width:480px">Entre le courriel de ton compte. On t'envoie un lien pour choisir un nouveau mot de passe. Pense à regarder dans tes courriels indésirables.</p>
+      <form class="form-compte" id="form-oubli" style="margin-top:18px">
+        <label>Courriel<input class="champ" name="identifiant" type="text" inputmode="email" maxlength="254" autocomplete="email" autocapitalize="off" autocorrect="off" spellcheck="false" placeholder="toi@exemple.com" value="${esc(courriel)}"></label>
+        <p class="erreur" id="erreur-oubli" role="alert"></p>
+        <div class="compte-ligne"><button class="bouton-plein" type="submit">M'envoyer le lien</button><button class="lien-discret" type="button" data-fermer-oubli>Annuler</button></div>
+      </form>`);
+    setTimeout(() => { const c = $("#form-oubli").identifiant; c.focus(); c.select(); }, 80);
   });
+  // 2) On arrive avec le lien du courriel : …/#reinit=<jeton>
+  function ouvrirNouveauMdp(jetonLien) {
+    ouvrirModale(`
+      <h2>Choisis un nouveau mot de passe</h2>
+      <p class="muet" style="margin:10px 0 0;max-width:480px">Choisis un mot de passe que tu n'utilises nulle part ailleurs. Tes autres appareils seront déconnectés.</p>
+      <form class="form-compte" id="form-nouveau-mdp" style="margin-top:18px">
+        <label>Nouveau mot de passe<input class="champ" name="nouveau" type="password" maxlength="200" autocomplete="new-password" placeholder="8 caractères ou plus"></label>
+        <label>Encore une fois<input class="champ" name="confirmation" type="password" maxlength="200" autocomplete="new-password"></label>
+        <p class="erreur" id="erreur-nouveau-mdp" role="alert"></p>
+        <div class="compte-ligne"><button class="bouton-plein" type="submit">Changer mon mot de passe</button><button class="lien-discret" type="button" data-fermer-oubli>Annuler</button></div>
+      </form>`);
+    $("#form-nouveau-mdp").dataset.jeton = jetonLien;
+    setTimeout(() => $("#form-nouveau-mdp").nouveau.focus(), 80);
+  }
+  document.addEventListener("click", e => { if (e.target.closest("[data-fermer-oubli]")) fermerModale(); });
+  document.addEventListener("submit", async e => {
+    const f = e.target;
+    if (f.id === "form-oubli") {
+      e.preventDefault();
+      const b = f.querySelector("[type=submit]"), err = $("#erreur-oubli");
+      err.textContent = ""; b.disabled = true; b.textContent = "Envoi…";
+      const { statut, corps } = await appelCompte("oubli", { identifiant: f.identifiant.value.trim().toLowerCase() }, false);
+      b.disabled = false; b.textContent = "M'envoyer le lien";
+      if (statut !== 200) { err.textContent = messageCompte(corps); return; }
+      ouvrirModale(`
+        <h2>Regarde tes courriels</h2>
+        <p class="muet" style="margin:10px 0 0;max-width:480px">Si un compte existe avec <strong>${esc(f.identifiant.value.trim().toLowerCase())}</strong>, tu vas recevoir un lien dans quelques minutes. Il marche pendant 30 minutes, une seule fois. Rien reçu ? Regarde dans tes courriels indésirables.</p>
+        <div class="cs-actions" style="margin-top:20px"><button class="bouton-plein" data-fermer-oubli>OK</button></div>`);
+    } else if (f.id === "form-nouveau-mdp") {
+      e.preventDefault();
+      const b = f.querySelector("[type=submit]"), err = $("#erreur-nouveau-mdp");
+      err.textContent = "";
+      if (f.nouveau.value !== f.confirmation.value) { err.textContent = "Les deux mots de passe ne sont pas pareils."; return; }
+      if (f.nouveau.value.length < 8) { err.textContent = MESSAGES_COMPTE.mot_de_passe_court; return; }
+      b.disabled = true; b.textContent = "Un instant…";
+      if (jeton) await envoyerSync(); // déjà connecté ici : on enregistre ce qui reste avant
+      const { statut, corps } = await appelCompte("nouveau-mot-de-passe", { jeton: f.dataset.jeton, nouveau: f.nouveau.value }, false);
+      b.disabled = false; b.textContent = "Changer mon mot de passe";
+      if (statut !== 200) { err.textContent = messageCompte(corps); return; }
+      fermerModale();
+      if (compte) oublierCompte(true); // on repart propre avant d'ouvrir le bon compte
+      await connecte(corps);
+      allerA("accueil");
+      toast(`Mot de passe changé. Tu es connecté, ${corps.nom} !`);
+    }
+  });
+  // Le jeton du lien est lu une fois, puis effacé de la barre d'adresse
+  const lienReinit = (() => { try { const m = location.hash.match(/^#reinit=([a-f0-9]{64})$/); return m ? m[1] : null; } catch (e) { return null; } })();
+  if (lienReinit) {
+    try { history.replaceState(null, "", location.pathname + location.search + "#accueil"); } catch (e) { /* pas grave */ }
+    ecrireSession("watchall.bienvenueVue", "1"); // pas la fenêtre « Crée ton compte » par-dessus
+    ouvrirNouveauMdp(lienReinit);
+  }
   $("#form-nom").addEventListener("submit", async e => {
     e.preventDefault();
     const nom = e.target.nom.value.trim();

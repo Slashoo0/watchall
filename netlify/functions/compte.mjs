@@ -8,11 +8,15 @@
    - On s'inscrit avec son courriel. Le courriel n'apparaît jamais dans le nom
      de la case de stockage : on y met seulement son empreinte.
    - Les anciens comptes créés avec un nom d'utilisateur marchent encore.
+   - Mot de passe oublié : on envoie par courriel (Gmail) un lien à usage
+     unique, valable 30 minutes. La réponse est la même que le courriel ait
+     un compte ou non.
    Tout passe par POST /.netlify/functions/compte?action=…
    ========================================================= */
 import { getStore } from "@netlify/blobs";
 import { scrypt, randomBytes, createHash, timingSafeEqual } from "node:crypto";
 import { promisify } from "node:util";
+import nodemailer from "nodemailer";
 
 const scryptAsync = promisify(scrypt);
 const JOUR = 86400000;
@@ -21,6 +25,13 @@ const MAX_SESSIONS = 10;                // appareils connectés en même temps
 const MAX_DONNEES = 1_500_000;          // taille max des données perso d'un compte
 const ECHECS_AVANT_BLOCAGE = 8;
 const DUREE_BLOCAGE = 15 * 60 * 1000;   // 15 minutes après trop d'essais ratés
+const HEURE = 3600000;
+const DUREE_LIEN = 30 * 60 * 1000;      // le lien « mot de passe oublié » marche 30 minutes
+const LIENS_PAR_HEURE_COMPTE = 3;       // courriels max par compte et par heure
+const DEMANDES_PAR_HEURE_IP = 10;       // demandes max par adresse IP et par heure
+const COURRIELS_PAR_JOUR = 100;         // pour tout le site (Gmail en permet environ 500)
+const DELAI_OUBLI = 1200;               // la réponse prend toujours au moins ce temps
+const SITE = "https://watchall-ca.netlify.app";
 
 const reponse = (statut, corps) => new Response(JSON.stringify(corps), {
   status: statut,
@@ -58,6 +69,63 @@ async function verifier(motDePasse, compte) {
 
 const cleCompte = id => "compte/" + id;
 const cleSession = h => "session/" + h;
+const cleReinit = h => "reinit/" + h;
+
+// Une demande « mot de passe oublié » en attente devient inutilisable
+async function annulerReinit(store, compte) {
+  if (compte.reinit) await store.delete(cleReinit(compte.reinit));
+  compte.reinit = null;
+}
+
+// Garde seulement les moments de la dernière heure ; dit si on a encore le droit
+const recents = liste => (Array.isArray(liste) ? liste : []).filter(t => t > Date.now() - HEURE);
+
+// Adresse du site pour le lien : en local, celle de netlify dev ; sinon toujours la vraie
+// (jamais l'en-tête Host envoyé par le visiteur, qu'il pourrait trafiquer).
+function adresseSite(req) {
+  const u = new URL(req.url);
+  return /^(localhost|127\.0\.0\.1)$/.test(u.hostname) ? u.origin : SITE;
+}
+const enLocal = req => /^(localhost|127\.0\.0\.1)$/.test(new URL(req.url).hostname);
+
+const html = t => String(t).replace(/[&<>"']/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" })[c]);
+
+// Envoie le courriel avec le compte Gmail du site (variables WATCHALL_GMAIL et WATCHALL_GMAIL_MDP).
+// Sans ces variables : en local, on écrit le lien dans le terminal pour pouvoir tester.
+async function envoyerLien(req, compte, lien) {
+  const user = process.env.WATCHALL_GMAIL || "", pass = (process.env.WATCHALL_GMAIL_MDP || "").replace(/\s/g, "");
+  const texte = `Bonjour ${compte.nom},
+
+Quelqu'un (sûrement toi) a demandé à changer le mot de passe de ton compte WatchAll.
+Pour choisir un nouveau mot de passe, ouvre ce lien dans les 30 minutes :
+
+${lien}
+
+Le lien ne marche qu'une seule fois. Si ce n'est pas toi, ignore ce courriel : ton mot de passe ne change pas.
+
+WatchAll`;
+  if (!user || !pass) {
+    if (enLocal(req)) console.log(`\n[mot de passe oublié] Gmail pas configuré : voici le courriel qui aurait été envoyé à ${compte.courriel}\n\n${texte}\n`);
+    else console.log("[mot de passe oublié] WATCHALL_GMAIL ou WATCHALL_GMAIL_MDP manquant : courriel non envoyé.");
+    return;
+  }
+  try {
+    const envoi = nodemailer.createTransport({ service: "gmail", auth: { user, pass } });
+    await envoi.sendMail({
+      from: `"WatchAll" <${user}>`,
+      to: compte.courriel,
+      subject: "Ton nouveau mot de passe WatchAll",
+      text: texte,
+      html: `<p>Bonjour ${html(compte.nom)},</p>
+<p>Quelqu'un (sûrement toi) a demandé à changer le mot de passe de ton compte WatchAll.</p>
+<p><a href="${html(lien)}" style="display:inline-block;padding:10px 18px;background:#111;color:#fff;border-radius:999px;text-decoration:none">Choisir un nouveau mot de passe</a></p>
+<p>Le lien marche pendant 30 minutes, une seule fois. Si ce n'est pas toi, ignore ce courriel : ton mot de passe ne change pas.</p>
+<p>WatchAll</p>`
+    });
+  } catch (e) {
+    console.log("[mot de passe oublié] L'envoi Gmail a échoué :", e && e.message); // jamais le mot de passe
+  }
+}
 
 async function ouvrirSession(store, compte) {
   const jeton = randomBytes(32).toString("hex");
@@ -87,7 +155,7 @@ async function compteDuJeton(store, req) {
 }
 const profil = c => ({ identifiant: c.courriel || c.id, nom: c.nom, majLe: c.majLe || 0, donnees: c.donnees || null });
 
-export default async (req) => {
+export default async (req, context) => {
   if (req.method !== "POST") return reponse(405, { erreur: "methode" });
   const store = getStore({ name: "watchall-comptes", consistency: "strong" });
   const action = new URL(req.url).searchParams.get("action") || "";
@@ -133,6 +201,69 @@ export default async (req) => {
     return reponse(200, { jeton, ...profil(compte) });
   }
 
+  // ---------- Mot de passe oublié : envoyer un lien par courriel ----------
+  // Même réponse, même délai, que le courriel ait un compte ou non :
+  // impossible de s'en servir pour savoir qui est inscrit.
+  if (action === "oubli") {
+    const courriel = courrielOk(d.identifiant);
+    if (!courriel) return reponse(400, { erreur: "courriel_invalide" });
+    const debut = Date.now();
+    let envoi = null;
+    try {
+      // Limite par adresse IP (on ne garde que son empreinte)
+      const ip = (context && context.ip) || req.headers.get("x-nf-client-connection-ip") || "inconnue";
+      const cleIp = "limite/ip/" + empreinte(ip).slice(0, 32);
+      const parIp = recents(await store.get(cleIp, { type: "json" }));
+      const ipOk = parIp.length < DEMANDES_PAR_HEURE_IP;
+      if (ipOk) await store.setJSON(cleIp, [...parIp, Date.now()]);
+
+      const id = idDuCourriel(courriel);
+      const compte = ipOk && await store.get(cleCompte(id), { type: "json" });
+      if (compte && compte.courriel) {
+        compte.oublis = recents(compte.oublis);
+        const cleJour = "limite/jour/" + new Date().toISOString().slice(0, 10);
+        const jour = (await store.get(cleJour, { type: "json" })) || { n: 0 };
+        if (compte.oublis.length < LIENS_PAR_HEURE_COMPTE && jour.n < COURRIELS_PAR_JOUR) {
+          await store.setJSON(cleJour, { n: jour.n + 1 });
+          await annulerReinit(store, compte); // un seul lien valide à la fois : le dernier
+          const jetonLien = randomBytes(32).toString("hex");
+          const h = empreinte(jetonLien);
+          await store.setJSON(cleReinit(h), { id, expire: Date.now() + DUREE_LIEN });
+          compte.reinit = h;
+          compte.oublis.push(Date.now());
+          await store.setJSON(cleCompte(id), compte);
+          // Le jeton est après le # : il n'est jamais envoyé au serveur dans l'adresse
+          envoi = envoyerLien(req, compte, `${adresseSite(req)}/#reinit=${jetonLien}`);
+        }
+      }
+    } catch (e) {
+      console.log("[mot de passe oublié] Erreur :", e && e.message);
+    }
+    // L'envoi continue après la réponse si Netlify le permet ; sinon on l'attend
+    if (envoi) { if (context && typeof context.waitUntil === "function") context.waitUntil(envoi); else await envoi; }
+    await pause(Math.max(0, DELAI_OUBLI - (Date.now() - debut)));
+    return reponse(200, { ok: true });
+  }
+
+  // ---------- Mot de passe oublié : choisir le nouveau mot de passe avec le lien ----------
+  if (action === "nouveau-mot-de-passe") {
+    const h = typeof d.jeton === "string" && /^[a-f0-9]{64}$/.test(d.jeton) ? empreinte(d.jeton) : null;
+    const demande = h && await store.get(cleReinit(h), { type: "json" });
+    const compte = demande && demande.expire > Date.now() && await store.get(cleCompte(demande.id), { type: "json" });
+    if (!compte || compte.reinit !== h) {
+      if (demande) await store.delete(cleReinit(h)); // lien expiré : on fait le ménage
+      await pause(800);
+      return reponse(400, { erreur: "lien_invalide" });
+    }
+    if (!motDePasseOk(d.nouveau)) return reponse(400, { erreur: "mot_de_passe_court" });
+    Object.assign(compte, await hacher(d.nouveau), { echecs: 0, bloqueJusqua: 0 });
+    await annulerReinit(store, compte);   // le lien ne marchera plus
+    await fermerSessions(store, compte);  // tous les appareils sont déconnectés…
+    const jeton = await ouvrirSession(store, compte); // …sauf celui-ci, qui est connecté
+    await store.setJSON(cleCompte(compte.id), compte);
+    return reponse(200, { jeton, ...profil(compte) });
+  }
+
   // ---------- Le propriétaire réinitialise le mot de passe d'un ami ----------
   if (action === "reinitialiser") {
     const admin = process.env.WATCHALL_ADMIN || "";
@@ -142,6 +273,7 @@ export default async (req) => {
     if (!compte) return reponse(404, { erreur: "compte_introuvable" });
     if (!motDePasseOk(d.nouveau)) return reponse(400, { erreur: "mot_de_passe_court" });
     Object.assign(compte, await hacher(d.nouveau), { echecs: 0, bloqueJusqua: 0 });
+    await annulerReinit(store, compte);
     await fermerSessions(store, compte);
     await store.setJSON(cleCompte(id), compte);
     return reponse(200, { ok: true });
@@ -178,6 +310,7 @@ export default async (req) => {
     if (!(await verifier(String(d.ancien || ""), compte))) { await pause(800); return reponse(403, { erreur: "ancien_incorrect" }); }
     if (!motDePasseOk(d.nouveau)) return reponse(400, { erreur: "mot_de_passe_court" });
     Object.assign(compte, await hacher(d.nouveau));
+    await annulerReinit(store, compte);
     await fermerSessions(store, compte, h); // les autres appareils devront se reconnecter
     await store.setJSON(cleCompte(compte.id), compte);
     return reponse(200, { ok: true });
@@ -192,6 +325,7 @@ export default async (req) => {
 
   if (action === "supprimer") {
     if (!(await verifier(String(d.motDePasse || ""), compte))) { await pause(800); return reponse(403, { erreur: "ancien_incorrect" }); }
+    await annulerReinit(store, compte);
     await fermerSessions(store, compte);
     await store.delete(cleCompte(compte.id));
     return reponse(200, { ok: true });
