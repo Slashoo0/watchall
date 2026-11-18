@@ -1,0 +1,7 @@
+# Autorise tous les moteurs de recherche à lire le site
+User-agent: *
+Allow: /
+Disallow: /.netlify/
+
+# Liste des pages pour Google
+Sitemap: https://watchall-ca.netlify.app/sitemap.xml
