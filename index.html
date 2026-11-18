@@ -2409,17 +2409,20 @@ function actionSuggestion(e) {
 /* --- Mode « Dans ma liste » (le fonctionnement de la v1) ---
    - moins de 30 min : seulement les titres de 30 min ou moins
    - environ 1 h     : d'abord les titres de 31 à 75 min, sinon les plus courts
-   - 2 h et plus     : d'abord les longs (plus de 75 min), sinon n'importe quoi
+   - 2 h et plus     : d'abord les films de 2 h ou plus et toutes les séries (on peut enchaîner
+                       les épisodes, comme dans le moteur TMDB), sinon les films de 1 h 16 à 1 h 59
+                       et les titres sans durée. Jamais un film (ou titre sans type) de 75 min ou moins.
    Les titres « en cours » ont deux fois plus de chances de sortir. */
 function proposer(temps) {
   const candidats = etat.liste.filter(t => t.statut !== "fini");
   const regles = {
-    court: { ideal: d => d > 0 && d <= 30, repli: () => false },
-    moyen: { ideal: d => d > 30 && d <= 75, repli: d => d > 0 && d <= 30 },
-    long:  { ideal: d => d > 75, repli: () => true }
+    court: { ideal: t => t.duree > 0 && t.duree <= 30, repli: () => false },
+    moyen: { ideal: t => t.duree > 30 && t.duree <= 75, repli: t => t.duree > 0 && t.duree <= 30 },
+    long:  { ideal: t => t.type === "serie" || t.duree >= 120,
+             repli: t => !t.duree || t.duree > 75 }
   }[temps];
-  let pool = candidats.filter(t => regles.ideal(t.duree));
-  if (!pool.length) pool = candidats.filter(t => regles.repli(t.duree));
+  let pool = candidats.filter(regles.ideal);
+  if (!pool.length) pool = candidats.filter(regles.repli);
   if (!pool.length) return null;
   let tirage = pool.flatMap(t => t.statut === "en-cours" ? [t, t] : [t]);
   if (pool.length > 1) tirage = tirage.filter(t => t.id !== dernierPropose);
