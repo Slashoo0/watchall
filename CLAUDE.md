@@ -16,7 +16,33 @@
   - `compte.mjs` : comptes par courriel
 - Stockage : **Netlify Blobs** pour les comptes et la config.
 - `netlify.toml` : pas d'étape de construction, le site est publié depuis la racine.
-- Tester en local avec `netlify dev`.
+
+### Carte de `index.html` (environ 4000 lignes)
+Le fichier est découpé en parties repérées par des commentaires `/* ===== */` et `<!-- ===== -->`.
+Chercher le titre (ex. `7. MA LISTE`) au lieu de lire tout le fichier.
+- CSS en haut, puis le HTML : `EN-TÊTE`, sections `vue-accueil`, `vue-liste`, `vue-abonnements`, `vue-parametres`, palette de commandes, fenêtre modale, carte « Bon retour ».
+- JavaScript, parties numérotées :
+  1. Données de départ et stockage · 2. Capacités de la page · 3. Outils (format, dates, sécurité)
+  4. Ouvrir un service · 5. Navigation entre les vues (#) · 6. Accueil · 7. Ma liste
+  8. « Je sais pas quoi regarder » (moteur TMDB, mode « Dans ma liste ») · 9. Aide raccourcis
+  10. Abonnements · 11. Paramètres · 12. Fenêtre modale · 13. Palette de commandes (Ctrl+K, « Où regarder »)
+  14. Raccourcis et boutons généraux · 15. « Bon retour » · 16. Configuration partagée (mode propriétaire)
+  16 b. Comptes · 17. Démarrage
+
+## Tester en local (gratuit, à faire avant tout commit)
+- Dans le dossier du projet : `netlify dev`, puis ouvrir http://localhost:8888
+  (la section `[dev]` de `netlify.toml` évite que Netlify croie que le site utilise Hugo à cause de `config.json`).
+- Si le port 8888 est déjà pris, un autre `netlify dev` tourne sûrement déjà (une autre session) : réutiliser celui-là.
+- En local, les Netlify Blobs sont un **bac à sable vide**, séparé du vrai site : on peut créer des comptes de test sans risque, mais on ne voit pas les vrais comptes ni la vraie config (la fonction config répond 404 « aucune_configuration », c'est normal).
+- `TMDB_TOKEN` et `WATCHALL_ADMIN` sont injectés depuis Netlify automatiquement.
+- La fonction `tmdb` n'accepte que les chemins de sa liste blanche (`CHEMINS_PERMIS` dans `tmdb.mjs`).
+
+## Façon de travailler
+- **Une session Claude Code par sujet** (une fonctionnalité ou un bug), toujours ouverte dans ce dossier.
+- Au début d'un sujet : expliquer à William le plan et les limites, **attendre son feu vert** avant de modifier les fichiers.
+- Presque tout est dans `index.html` : **une seule session à la fois modifie ce fichier**. Avant de modifier, vérifier `git status` : s'il y a des changements non commités qui ne viennent pas de toi, une autre session travaille peut-être, alors demander à William avant de continuer.
+- Quand le sujet marche : tester avec `netlify dev`, faire un commit local avec un message clair en français, puis mettre à jour la note Obsidian.
+- Le push se fait seulement quand William le demande (voir plus bas).
 
 ## Mise en ligne et crédits Netlify (TRÈS IMPORTANT)
 - Chaque push sur `main` déclenche une mise en ligne Netlify qui **coûte des crédits**.

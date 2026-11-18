@@ -2,3 +2,8 @@
 [build]
   publish = "."                     # le site est à la racine (pas d'étape de construction)
   functions = "netlify/functions"   # le dossier de la fonction serveur
+
+# Seulement pour « netlify dev » sur l'ordi (n'a aucun effet sur la mise en ligne)
+[dev]
+  framework = "#static"             # site statique : sans ça, Netlify croit que c'est Hugo (à cause de config.json)
+  publish = "."
